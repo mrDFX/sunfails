@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>GOES Proton Flux (NOAA/SWPC) — D3</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <style>
+    :root{
+      --bg:#0b0f17; --panel:#11182a; --text:#e7eefc; --muted:#9fb0d0; --grid:#24304d;
+      --stroke:rgba(231,238,252,0.95);
+      --axis:rgba(255,255,255,0.25);
+      --thr:rgba(255,255,255,0.22);
+    }
+    body{ margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif; background:var(--bg); color:var(--text); }
+    header{ padding:14px 14px 8px; }
+    h1{ font-size:16px; margin:0 0 10px; font-weight:650; letter-spacing:.2px; }
+
+    .row{ display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; }
+    .chip{
+      background:var(--panel); border:1px solid rgba(255,255,255,0.08);
+      border-radius:12px; padding:10px 12px; display:flex; gap:10px; align-items:center;
+    }
+    label{ font-size:12px; color:var(--muted); display:block; margin-bottom:6px; }
+    select, button, input{
+      appearance:none; border-radius:10px; border:1px solid rgba(255,255,255,0.10);
+      background:rgba(255,255,255,0.06); color:var(--text);
+      padding:10px 12px; font-size:14px;
+    }
+    input[type="datetime-local"]{ min-width: 220px; }
+    button{ cursor:pointer; }
+    .status{ font-size:12px; color:var(--muted); margin-top:10px; line-height:1.35; }
+    .wrap{ padding:0 10px 14px; }
+    .card{
+      background:var(--panel); border:1px solid rgba(255,255,255,0.08);
+      border-radius:16px; padding:10px; overflow:hidden;
+    }
+    svg{ width:100%; height:auto; display:block; }
+    .hint{ font-size:12px; color:var(--muted); padding:10px 14px 16px; }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+
+    .slevels{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .slevels label{ margin:0; font-size:12px; color:var(--muted); }
+    .slevels .sbox{ display:flex; gap:6px; align-items:center; padding:6px 8px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); }
+    .slevels input{ transform: scale(1.05); }
+
+    /* D3 brush visuals */
+    .selection{ fill: rgba(231,238,252,0.12); stroke: rgba(231,238,252,0.25); }
+    .handle{ fill: rgba(231,238,252,0.25); }
+  </style>
+</head>
+
+<body>
+<header>
+  <h1>GOES Proton Flux (NOAA/SWPC) — live</h1>
+
+  <div class="row">
+    <div class="chip">
+      <div>
+        <label>Файл данных</label>
+        <select id="rangeSel">
+          <option value="6-hour">6 часов</option>
+          <option value="1-day">1 день</option>
+          <option value="3-day" selected>3 дня</option>
+          <option value="7-day">7 дней</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="chip">
+      <div>
+        <label>Энергия</label>
+        <select id="energySel">
+          <option value=">=10 MeV" selected>&ge;10 MeV (S1–S5)</option>
+          <option value=">=1 MeV">&ge;1 MeV</option>
+          <option value=">=5 MeV">&ge;5 MeV</option>
+          <option value=">=30 MeV">&ge;30 MeV</option>
+          <option value=">=50 MeV">&ge;50 MeV</option>
+          <option value=">=60 MeV">&ge;60 MeV</option>
+          <option value=">=100 MeV">&ge;100 MeV</option>
+          <option value=">=500 MeV">&ge;500 MeV</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="chip">
+      <div>
+        <label>Период (локальное время устройства)</label>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <input id="startDt" type="datetime-local" />
+          <input id="endDt" type="datetime-local" />
+        </div>
+        <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+          <button id="applyRangeBtn">Применить</button>
+          <button id="resetZoomBtn">Сброс</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="chip">
+      <div>
+        <label>Автообновление</label>
+        <select id="refreshSel">
+          <option value="0">выкл</option>
+          <option value="30">30с</option>
+          <option value="60" selected>60с</option>
+          <option value="120">120с</option>
+          <option value="300">5мин</option>
+        </select>
+      </div>
+      <button id="reloadBtn">Обновить</button>
+    </div>
+
+    <div class="chip" style="flex:1 1 260px;">
+      <div style="width:100%;">
+        <label>S-подсветка (только для ≥10 MeV)</label>
+        <div class="slevels" id="sLevelControls"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status" id="status">Загрузка…</div>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <svg id="chart" viewBox="0 0 1080 560" preserveAspectRatio="xMidYMid meet"></svg>
+  </div>
+</div>
+
+<div class="hint">
+  Выделяй диапазон прямо на графике (drag) — это zoom по времени. Сброс — кнопка “Сброс”.<br/>
+  Источник: <span class="mono">https://services.swpc.noaa.gov/json/goes/primary/integral-protons-*.json</span><br/>
+  Y — логарифмическая шкала (pfu).
+</div>
+
+<script>
+(() => {
+  const svg = d3.select("#chart");
+  const statusEl = document.getElementById("status");
+
+  const rangeSel = document.getElementById("rangeSel");
+  const energySel = document.getElementById("energySel");
+  const refreshSel = document.getElementById("refreshSel");
+  const reloadBtn = document.getElementById("reloadBtn");
+
+  const startDt = document.getElementById("startDt");
+  const endDt = document.getElementById("endDt");
+  const applyRangeBtn = document.getElementById("applyRangeBtn");
+  const resetZoomBtn = document.getElementById("resetZoomBtn");
+
+  const sLevelControls = document.getElementById("sLevelControls");
+
+  const W = 1080, H = 560;
+  const margin = {top: 18, right: 18, bottom: 54, left: 78};
+  const innerW = W - margin.left - margin.right;
+  const innerH = H - margin.top - margin.bottom;
+
+  const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+  const gBands = g.append("g");   // background S bands
+  const gGrid  = g.append("g");
+  const gAxes  = g.append("g");
+  const gThr   = g.append("g");   // S threshold lines
+  const gLine  = g.append("g");
+  const gOver  = g.append("g");   // tooltip
+  const gBrush = g.append("g");
+
+  const x = d3.scaleUtc().range([0, innerW]);
+  const y = d3.scaleLog().range([innerH, 0]).clamp(true);
+
+  const fmtUtc = d3.utcFormat("%Y-%m-%d %H:%M UTC");
+  const fmtNum = d3.format(".4~g");
+
+  // S-level thresholds for >=10 MeV
+  const sLevels = [
+    { id:"S1", thr:10,     next:100   },
+    { id:"S2", thr:100,    next:1000  },
+    { id:"S3", thr:1000,   next:10000 },
+    { id:"S4", thr:10000,  next:100000},
+    { id:"S5", thr:100000, next:Infinity},
+  ];
+
+  // fixed colors (легко менять)
+  const sFill = {
+    S1: "rgba(66, 165, 245, 0.14)",
+    S2: "rgba(126, 87, 194, 0.14)",
+    S3: "rgba(255, 202, 40, 0.14)",
+    S4: "rgba(255, 112, 67, 0.16)",
+    S5: "rgba(239, 83, 80, 0.18)"
+  };
+  const sStroke = {
+    S1: "rgba(66, 165, 245, 0.32)",
+    S2: "rgba(126, 87, 194, 0.32)",
+    S3: "rgba(255, 202, 40, 0.34)",
+    S4: "rgba(255, 112, 67, 0.36)",
+    S5: "rgba(239, 83, 80, 0.40)"
+  };
+
+  let timer = null;
+
+  // Global state
+  let fullSeries = [];          // filtered by energy, sorted
+  let currentEnergy = ">=10 MeV";
+  let fullDomain = null;        // [tMin, tMax]
+  let currentDomain = null;     // [tMin, tMax]
+  let sEnabled = { S1:true, S2:true, S3:true, S4:true, S5:true };
+
+  function urlFor(range) {
+    // cache-buster чтобы Safari/прокси не держали старое
+    return `https://services.swpc.noaa.gov/json/goes/primary/integral-protons-${range}.json?_=${Date.now()}`;
+  }
+
+  function parseRows(raw) {
+    return raw.map(d => {
+      const tt = d.time_tag || d.time || d.timestamp || d.date;
+      const en = (d.energy || d.channel || d.label || "").toString().trim();
+      const fx = d.flux ?? d.value ?? d.pfu ?? d.flux_pfu;
+      const dt = tt ? new Date(tt) : null;
+      const val = (fx === null || fx === undefined || fx === "") ? NaN : +fx;
+      return { t: dt, energy: en, v: val };
+    }).filter(d => d.t instanceof Date && !isNaN(d.t));
+  }
+
+  function pickEnergy(rows, energyWanted) {
+    return rows
+      .filter(d => (d.energy || "").toString().trim() === energyWanted)
+      .filter(d => isFinite(d.v) && d.v > 0)
+      .sort((a,b) => a.t - b.t);
+  }
+
+  function clampDomainToFull(domain) {
+    if (!fullDomain) return domain;
+    const [a,b] = domain;
+    const [fa,fb] = fullDomain;
+    const aa = new Date(Math.max(+a, +fa));
+    const bb = new Date(Math.min(+b, +fb));
+    if (+aa >= +bb) return [fa, fb];
+    return [aa, bb];
+  }
+
+  function setInputsFromDomain(domain) {
+    // datetime-local expects local time string without timezone suffix
+    const toLocalInput = (d) => {
+      const pad = n => String(n).padStart(2,"0");
+      const yy = d.getFullYear();
+      const mm = pad(d.getMonth()+1);
+      const dd = pad(d.getDate());
+      const hh = pad(d.getHours());
+      const mi = pad(d.getMinutes());
+      return `${yy}-${mm}-${dd}T${hh}:${mi}`;
+    };
+    // domain is UTC Date objects, but Date in JS is absolute; getHours() gives local — OK for inputs
+    startDt.value = toLocalInput(domain[0]);
+    endDt.value   = toLocalInput(domain[1]);
+  }
+
+  function getDomainFromInputs() {
+    const a = startDt.value ? new Date(startDt.value) : null;
+    const b = endDt.value ? new Date(endDt.value) : null;
+    if (!a || !b || isNaN(a) || isNaN(b)) return null;
+    if (+a >= +b) return null;
+    return [a,b];
+  }
+
+  function buildSControls() {
+    sLevelControls.innerHTML = "";
+    sLevels.forEach(lv => {
+      const wrap = document.createElement("div");
+      wrap.className = "sbox";
+      wrap.style.borderColor = "rgba(255,255,255,0.10)";
+      wrap.style.background = "rgba(255,255,255,0.03)";
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = !!sEnabled[lv.id];
+      cb.addEventListener("change", () => {
+        sEnabled[lv.id] = cb.checked;
+        render(); // just redraw
+      });
+
+      const lab = document.createElement("span");
+      lab.textContent = `${lv.id} (≥${lv.thr} pfu)`;
+      lab.style.color = "rgba(231,238,252,0.85)";
+      lab.style.fontSize = "12px";
+
+      const dot = document.createElement("span");
+      dot.style.display = "inline-block";
+      dot.style.width = "10px";
+      dot.style.height = "10px";
+      dot.style.borderRadius = "10px";
+      dot.style.background = sStroke[lv.id];
+      dot.style.marginRight = "6px";
+
+      wrap.appendChild(cb);
+      wrap.appendChild(dot);
+      wrap.appendChild(lab);
+      sLevelControls.appendChild(wrap);
+    });
+  }
+
+  function computeSIntervals(series) {
+    // returns {S1:[{a,b}], S2:[...], ...} for >=10 MeV only
+    const out = { S1:[], S2:[], S3:[], S4:[], S5:[] };
+    if (!series.length) return out;
+
+    // helper: determine level id for value
+    const levelOf = (v) => {
+      for (let i=sLevels.length-1; i>=0; i--) {
+        if (v >= sLevels[i].thr) return sLevels[i].id;
+      }
+      return null;
+    };
+
+    let cur = null; // {id, start}
+    for (let i=0; i<series.length; i++) {
+      const d = series[i];
+      const id = levelOf(d.v);
+
+      if (!id) {
+        if (cur) {
+          out[cur.id].push({a: cur.start, b: series[i-1].t});
+          cur = null;
+        }
+        continue;
+      }
+
+      if (!cur) {
+        cur = { id, start: d.t };
+      } else if (cur.id !== id) {
+        // close previous at previous point time
+        out[cur.id].push({a: cur.start, b: series[i-1].t});
+        cur = { id, start: d.t };
+      }
+    }
+    if (cur) out[cur.id].push({a: cur.start, b: series[series.length-1].t});
+    return out;
+  }
+
+  function render() {
+    // Clean layers
+    gBands.selectAll("*").remove();
+    gGrid.selectAll("*").remove();
+    gAxes.selectAll("*").remove();
+    gThr.selectAll("*").remove();
+    gLine.selectAll("*").remove();
+    gOver.selectAll("*").remove();
+    gBrush.selectAll("*").remove();
+
+    if (!fullSeries.length || !currentDomain) {
+      statusEl.textContent = "Нет данных (или выбранный канал пуст).";
+      return;
+    }
+
+    const series = fullSeries.filter(d => d.t >= currentDomain[0] && d.t <= currentDomain[1]);
+    if (!series.length) {
+      statusEl.textContent = "В выбранном диапазоне времени нет точек.";
+      return;
+    }
+
+    // Scales
+    x.domain(currentDomain);
+
+    const vMin = d3.min(series, d => d.v);
+    const vMax = d3.max(series, d => d.v);
+    const yMin = Math.max(1e-3, vMin * 0.8);
+    const yMax = Math.max(1, vMax * 1.2);
+    y.domain([yMin, yMax]);
+
+    // Background S bands (only for >=10 MeV)
+    if (currentEnergy === ">=10 MeV") {
+      const intervals = computeSIntervals(series);
+      const bandData = [];
+      Object.keys(intervals).forEach(id => {
+        if (!sEnabled[id]) return;
+        intervals[id].forEach(seg => bandData.push({id, a: seg.a, b: seg.b}));
+      });
+
+      gBands.selectAll("rect.band")
+        .data(bandData)
+        .enter().append("rect")
+        .attr("class","band")
+        .attr("x", d => x(d.a))
+        .attr("y", 0)
+        .attr("width", d => Math.max(1, x(d.b) - x(d.a)))
+        .attr("height", innerH)
+        .attr("fill", d => sFill[d.id] || "rgba(255,255,255,0.06)")
+        .attr("stroke", d => sStroke[d.id] || "rgba(255,255,255,0.12)")
+        .attr("stroke-width", 1);
+    }
+
+    // Grid
+    const yTicks = y.ticks(9).filter(t => t > 0);
+    gGrid.selectAll("line.h").data(yTicks).enter()
+      .append("line")
+      .attr("class","h")
+      .attr("x1",0).attr("x2",innerW)
+      .attr("y1",d=>y(d)).attr("y2",d=>y(d))
+      .attr("stroke","rgba(255,255,255,0.08)")
+      .attr("stroke-width",1);
+
+    // Axes
+    const xAxis = d3.axisBottom(x).ticks(6).tickFormat(d3.utcFormat("%m-%d %H:%M"));
+    const yAxis = d3.axisLeft(y).ticks(9, "~g");
+
+    gAxes.append("g")
+      .attr("transform", `translate(0,${innerH})`)
+      .call(xAxis)
+      .call(s => s.selectAll("text").attr("fill","rgba(231,238,252,0.85)"))
+      .call(s => s.selectAll("path,line").attr("stroke","rgba(255,255,255,0.25)"));
+
+    gAxes.append("g")
+      .call(yAxis)
+      .call(s => s.selectAll("text").attr("fill","rgba(231,238,252,0.85)"))
+      .call(s => s.selectAll("path,line").attr("stroke","rgba(255,255,255,0.25)"));
+
+    // Threshold lines (only for >=10 MeV)
+    if (currentEnergy === ">=10 MeV") {
+      const thr = sLevels
+        .map(d => ({name:d.id, v:d.thr}))
+        .filter(d => d.v >= y.domain()[0] && d.v <= y.domain()[1]);
+
+      const thrG = gThr.selectAll("g.thr").data(thr).enter().append("g").attr("class","thr");
+      thrG.append("line")
+        .attr("x1",0).attr("x2",innerW)
+        .attr("y1",d=>y(d.v)).attr("y2",d=>y(d.v))
+        .attr("stroke","rgba(255,255,255,0.22)")
+        .attr("stroke-dasharray","6,6");
+
+      thrG.append("text")
+        .attr("x", innerW - 6)
+        .attr("y", d => y(d.v) - 6)
+        .attr("text-anchor","end")
+        .attr("fill","rgba(231,238,252,0.70)")
+        .attr("font-size", 12)
+        .text(d => `${d.name}: ${d.v} pfu`);
+    }
+
+    // Line
+    const line = d3.line()
+      .x(d => x(d.t))
+      .y(d => y(d.v))
+      .curve(d3.curveMonotoneX);
+
+    gLine.append("path")
+      .datum(series)
+      .attr("fill","none")
+      .attr("stroke","rgba(231,238,252,0.95)")
+      .attr("stroke-width", 2.2)
+      .attr("d", line);
+
+    // Tooltip
+    const overlay = gOver.append("rect")
+      .attr("x",0).attr("y",0).attr("width",innerW).attr("height",innerH)
+      .attr("fill","transparent");
+
+    const tip = gOver.append("g").style("display","none");
+    tip.append("line")
+      .attr("y1",0).attr("y2",innerH)
+      .attr("stroke","rgba(255,255,255,0.25)")
+      .attr("stroke-dasharray","4,4");
+
+    const tipBox = tip.append("g");
+    tipBox.append("rect")
+      .attr("rx",10).attr("ry",10)
+      .attr("fill","rgba(17,24,42,0.96)")
+      .attr("stroke","rgba(255,255,255,0.10)");
+
+    const tipText1 = tipBox.append("text").attr("fill","rgba(231,238,252,0.95)").attr("font-size",13);
+    const tipText2 = tipBox.append("text").attr("fill","rgba(159,176,208,0.95)").attr("font-size",12);
+
+    const bisect = d3.bisector(d => d.t).left;
+
+    function levelLabel(v) {
+      if (currentEnergy !== ">=10 MeV") return "";
+      for (let i=sLevels.length-1; i>=0; i--) {
+        if (v >= sLevels[i].thr) return `  ${sLevels[i].id}`;
+      }
+      return "  <S1";
+    }
+
+    function showTip(evt) {
+      const [mx] = d3.pointer(evt, overlay.node());
+      const t0 = x.invert(mx);
+      const i = Math.min(series.length-1, Math.max(0, bisect(series, t0)));
+      const d = series[i];
+
+      tip.style("display", null);
+      tip.attr("transform", `translate(${x(d.t)},0)`);
+      tip.select("line").attr("x1",0).attr("x2",0);
+
+      const l1 = `${currentEnergy}  ${fmtNum(d.v)} pfu${levelLabel(d.v)}`;
+      const l2 = `${fmtUtc(d.t)}`;
+
+      tipText1.text(l1).attr("x", 12).attr("y", 20);
+      tipText2.text(l2).attr("x", 12).attr("y", 40);
+
+      const w = Math.max(240, (l1.length * 7.1));
+      const h = 54;
+      const xPos = (x(d.t) > innerW * 0.62) ? -w - 14 : 14;
+
+      tipBox.attr("transform", `translate(${xPos},10)`);
+      tipBox.select("rect").attr("width", w).attr("height", h);
+    }
+
+    overlay
+      .on("pointerenter", () => tip.style("display", null))
+      .on("pointermove", showTip)
+      .on("pointerleave", () => tip.style("display","none"));
+
+    // Brush (time selection)
+    const brush = d3.brushX()
+      .extent([[0,0],[innerW,innerH]])
+      .on("end", (event) => {
+        if (!event.selection) return;
+        const [sx0, sx1] = event.selection;
+        const d0 = x.invert(sx0);
+        const d1 = x.invert(sx1);
+        currentDomain = clampDomainToFull([d0, d1]);
+        setInputsFromDomain(currentDomain);
+        render(); // redraw with new domain
+      });
+
+    gBrush.call(brush);
+
+    // Status
+    const tMin = series[0].t;
+    const tMax = series[series.length-1].t;
+    const last = series[series.length-1];
+
+    statusEl.innerHTML =
+      `Канал: <span class="mono">${currentEnergy}</span>, точек в окне: <span class="mono">${series.length}</span><br>` +
+      `Окно: <span class="mono">${fmtUtc(tMin)}</span> → <span class="mono">${fmtUtc(tMax)}</span><br>` +
+      `Последнее: <span class="mono">${fmtNum(last.v)} pfu</span> @ <span class="mono">${fmtUtc(last.t)}</span>` +
+      (currentEnergy === ">=10 MeV" ? ` (${levelLabel(last.v).trim()})` : "");
+  }
+
+  async function loadData() {
+    const range = rangeSel.value;
+    currentEnergy = energySel.value;
+
+    statusEl.textContent = "Загрузка…";
+
+    try {
+      const resp = await fetch(urlFor(range), { cache: "no-store" });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const raw = await resp.json();
+
+      const rows = parseRows(raw);
+      fullSeries = pickEnergy(rows, currentEnergy);
+
+      if (!fullSeries.length) {
+        fullDomain = null;
+        currentDomain = null;
+        render();
+        return;
+      }
+
+      fullDomain = d3.extent(fullSeries, d => d.t);
+
+      // First load: set full domain + inputs
+      // Next loads: keep current domain but clamp to new full domain (if file window slid)
+      if (!currentDomain) {
+        currentDomain = fullDomain;
+      } else {
+        currentDomain = clampDomainToFull(currentDomain);
+      }
+      setInputsFromDomain(currentDomain);
+
+      // Enable/disable S controls depending on energy
+      sLevelControls.style.opacity = (currentEnergy === ">=10 MeV") ? "1" : "0.45";
+      Array.from(sLevelControls.querySelectorAll("input[type=checkbox]"))
+        .forEach(cb => cb.disabled = (currentEnergy !== ">=10 MeV"));
+
+      render();
+    } catch (e) {
+      statusEl.textContent = `Ошибка загрузки: ${e.message}`;
+    }
+  }
+
+  function scheduleRefresh() {
+    if (timer) { clearInterval(timer); timer = null; }
+    const s = +refreshSel.value;
+    if (s > 0) timer = setInterval(loadData, s * 1000);
+  }
+
+  // UI bindings
+  rangeSel.addEventListener("change", () => { currentDomain = null; loadData(); });
+  energySel.addEventListener("change", () => { currentDomain = null; loadData(); });
+
+  refreshSel.addEventListener("change", () => { scheduleRefresh(); loadData(); });
+  reloadBtn.addEventListener("click", loadData);
+
+  applyRangeBtn.addEventListener("click", () => {
+    if (!fullDomain) return;
+    const dom = getDomainFromInputs();
+    if (!dom) {
+      statusEl.textContent = "Неверный период: проверь start/end (start должен быть меньше end).";
+      return;
+    }
+    currentDomain = clampDomainToFull(dom);
+    setInputsFromDomain(currentDomain);
+    render();
+  });
+
+  resetZoomBtn.addEventListener("click", () => {
+    if (!fullDomain) return;
+    currentDomain = fullDomain;
+    setInputsFromDomain(currentDomain);
+    render();
+  });
+
+  // init
+  buildSControls();
+  scheduleRefresh();
+  loadData();
+})();
+</script>
+</body>
+</html>
