@@ -678,7 +678,7 @@ const ST={
 };
 
 function curProd(){return PRODUCTS.find(p=>p.id===ST.product)||PRODUCTS[0];}
-function sActive(){const p=curProd();return p.sLevels&&ST.energy==='>=10 MeV';}
+function sActive(){const p=curProd();return p.sLevels;}
 
 /* ─────────── DOM ─────────── */
 const $=id=>document.getElementById(id);
@@ -1148,7 +1148,9 @@ function buildProductSel(){
     og.label=t(grp.label);
     for(const id of grp.ids){
       const p=PRODUCTS.find(x=>x.id===id);if(!p)continue;
-      const o=document.createElement('option');o.value=p.id;o.textContent=t(p.label);
+      const hasBio=BIO.some(b=>b.prod===p.id&&b.levels&&b.levels.length>0);
+      const o=document.createElement('option');o.value=p.id;
+      o.textContent=(hasBio?'⚠ ':' · ')+t(p.label);
       if(p.id===cur)o.selected=true;
       og.appendChild(o);
     }
