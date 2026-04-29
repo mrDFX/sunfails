@@ -3,150 +3,149 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>GOES Proton Flux (NOAA/SWPC) — D3</title>
+  <title>GOES Data Explorer — NOAA/SWPC</title>
   <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
   <style>
     :root{
-      --bg:#0b0f17; --panel:#11182a; --text:#e7eefc; --muted:#9fb0d0; --grid:#24304d;
-      --stroke:rgba(231,238,252,0.95);
-      --axis:rgba(255,255,255,0.25);
-      --thr:rgba(255,255,255,0.22);
+      --bg:#0b0f17;--panel:#11182a;--panel2:#161f35;--text:#e7eefc;--muted:#9fb0d0;
+      --accent:#4a9eff;--stroke:rgba(231,238,252,0.95);
+      --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.12);
+      --hover:rgba(255,255,255,0.06);--axis:rgba(255,255,255,0.25);
     }
-    body{ margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif; background:var(--bg); color:var(--text); }
-    header{ padding:14px 14px 8px; }
-    h1{ font-size:16px; margin:0 0 10px; font-weight:650; letter-spacing:.2px; }
-
-    .row{ display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; }
-    .chip{
-      background:var(--panel); border:1px solid rgba(255,255,255,0.08);
-      border-radius:12px; padding:10px 12px; display:flex; gap:10px; align-items:center;
+    [data-theme="light"]{
+      --bg:#f5f7fa;--panel:#ffffff;--panel2:#f0f2f5;--text:#1a1a2e;--muted:#6b7280;
+      --accent:#3b82f6;--stroke:rgba(26,26,46,0.90);
+      --border:rgba(0,0,0,0.10);--border2:rgba(0,0,0,0.15);
+      --hover:rgba(0,0,0,0.04);--axis:rgba(0,0,0,0.25);
     }
-    label{ font-size:12px; color:var(--muted); display:block; margin-bottom:6px; }
-    /* Не трогаем appearance у <select>: в Safari/WebKit appearance:none ломает выбор и событие change */
-    button, input{
-      appearance:none; border-radius:10px; border:1px solid rgba(255,255,255,0.10);
-      background:rgba(255,255,255,0.06); color:var(--text);
-      padding:10px 12px; font-size:14px;
-    }
-    select{
-      border-radius:10px; border:1px solid rgba(255,255,255,0.10);
-      background:rgba(255,255,255,0.06); color:var(--text);
-      padding:10px 12px; font-size:14px;
-      appearance:auto;
-      -webkit-appearance:menulist-button;
-    }
-    input[type="datetime-local"]{ min-width: 220px; }
-    input[type="color"]{ width:44px; height:40px; padding:4px; cursor:pointer; }
-    input[type="range"]{ width:120px; vertical-align:middle; }
-    button{ cursor:pointer; }
-    .status{ font-size:12px; color:var(--muted); margin-top:10px; line-height:1.35; }
-    .wrap{ padding:0 10px 14px; }
-    .card{
-      background:var(--panel); border:1px solid rgba(255,255,255,0.08);
-      border-radius:16px; padding:10px; overflow:hidden;
-    }
-    svg{ width:100%; height:auto; display:block; }
-    .hint{ font-size:12px; color:var(--muted); padding:10px 14px 16px; }
-    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
-
-    .slevels{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-    .slevels label{ margin:0; font-size:12px; color:var(--muted); }
-    .slevels .sbox{ display:flex; gap:6px; align-items:center; padding:6px 8px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); }
-    .slevels input{ transform: scale(1.05); }
-
-    details.chip{ flex:1 1 100%; }
-    details.chip > summary{
-      list-style:none; cursor:pointer; font-size:13px; color:var(--text);
-      user-select:none; padding:4px 0;
-    }
-    details.chip > summary::-webkit-details-marker{ display:none; }
-    .disp-grid{
-      display:grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap:12px 16px;
-      margin-top:12px;
-      padding-top:12px;
-      border-top:1px solid rgba(255,255,255,0.08);
-    }
-    .disp-item label{ margin-bottom:4px; }
-    .disp-item .inline{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-    .warn{ color:#ffb74d; font-size:11px; margin-top:6px; line-height:1.35; }
-
-    /* D3 brush visuals */
-    .selection{ fill: rgba(231,238,252,0.12); stroke: rgba(231,238,252,0.25); }
-    .handle{ fill: rgba(231,238,252,0.25); }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif;background:var(--bg);color:var(--text);transition:background .3s,color .3s}
+    header{padding:14px 14px 6px;max-width:1440px;margin:0 auto}
+    .title-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.2px}
+    .theme-btn{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:5px 11px;cursor:pointer;font-size:16px;color:var(--text);transition:all .2s}
+    .theme-btn:hover{background:var(--hover)}
+    .row{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin-bottom:8px}
+    .chip{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:9px 11px;display:flex;gap:8px;align-items:center;transition:background .3s}
+    label{font-size:10.5px;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+    select,button,input{appearance:none;border-radius:8px;border:1px solid var(--border2);background:var(--hover);color:var(--text);padding:7px 10px;font-size:13px;font-family:inherit;transition:all .2s}
+    select:focus,input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(74,158,255,0.15)}
+    button{cursor:pointer;font-weight:500}
+    button:hover{background:rgba(74,158,255,0.15);border-color:var(--accent)}
+    .period-group{display:flex;flex-wrap:wrap;gap:3px}
+    .pbtn{padding:5px 9px;border-radius:7px;font-size:11.5px;font-weight:600;border:1px solid var(--border2);background:var(--hover);color:var(--text);cursor:pointer;transition:all .12s;min-width:32px;text-align:center;line-height:1.3}
+    .pbtn:hover{background:rgba(74,158,255,0.12);border-color:var(--accent)}
+    .pbtn.active{background:rgba(74,158,255,0.22);border-color:var(--accent);color:var(--accent)}
+    .pbtn.disabled{opacity:.25;pointer-events:none}
+    .pbtn.nf{opacity:.45}.pbtn.nf.hd{opacity:1}
+    .pbtn.nf::after{content:"↑";font-size:7px;vertical-align:super;margin-left:1px}
+    .pbtn.nf.hd::after{content:""}
+    details{background:var(--panel);border:1px solid var(--border);border-radius:12px;transition:background .3s}
+    details summary{padding:9px 13px;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted);user-select:none;list-style:none}
+    details summary::-webkit-details-marker{display:none}
+    details summary::before{content:"▸ "}
+    details[open] summary::before{content:"▾ "}
+    .panel-body{padding:2px 13px 13px}
+    .sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:10px}
+    .si label{margin-bottom:3px}
+    .si input[type="range"]{width:100%;padding:3px 0;background:transparent;border:none}
+    .si input[type="color"]{width:38px;height:28px;padding:2px;border-radius:6px}
+    .sr{display:flex;gap:7px;align-items:center}
+    .drop-zone{border:2px dashed var(--border2);border-radius:12px;padding:16px;text-align:center;color:var(--muted);font-size:13px;transition:all .2s;cursor:pointer;margin-top:6px}
+    .drop-zone:hover,.drop-zone.dragover{border-color:var(--accent);background:rgba(74,158,255,0.06)}
+    .drop-zone input[type="file"]{display:none}
+    .slevels{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .sbox{display:flex;gap:4px;align-items:center;padding:4px 7px;border-radius:7px;border:1px solid var(--border);background:var(--hover);font-size:11px;color:var(--muted)}
+    .sbox input{transform:scale(1.05)}
+    .status{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.4}
+    .wrap{padding:0 14px 8px;max-width:1440px;margin:0 auto}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:8px;overflow:hidden;transition:background .3s}
+    svg{width:100%;height:auto;display:block}
+    .toolbar{display:flex;gap:6px;flex-wrap:wrap;padding:4px 14px 6px;max-width:1440px;margin:0 auto;align-items:center}
+    .toolbar button{font-size:11px;padding:5px 10px}
+    .hint{font-size:11.5px;color:var(--muted);padding:4px 14px 18px;max-width:1440px;margin:0 auto;line-height:1.5}
+    .hint a{color:var(--accent)}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .badge{display:inline-block;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.3px}
+    .badge.live{background:rgba(52,211,153,0.2);color:#34d399}
+    .badge.file{background:rgba(251,191,36,0.2);color:#fbbf24}
+    .selection{fill:rgba(74,158,255,0.12);stroke:rgba(74,158,255,0.30)}
+    .handle{fill:rgba(74,158,255,0.30)}
+    @media(max-width:640px){.sgrid{grid-template-columns:1fr}input[type="date"]{min-width:120px}}
   </style>
 </head>
 
-<body>
+<body data-theme="dark">
 <header>
-  <h1>GOES Proton Flux (NOAA/SWPC) — live</h1>
+  <div class="title-row">
+    <h1 id="pageTitle">GOES Data Explorer — NOAA/SWPC</h1>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="badge live" id="dataBadge">LIVE</span>
+      <button class="theme-btn" id="themeBtn" title="Тема">◐</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="chip" style="flex:1 1 100%">
+      <div style="width:100%">
+        <label>Период</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:5px">
+          <span style="font-size:10px;color:var(--muted);min-width:28px">Live</span>
+          <div class="period-group" id="livePresets"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:7px">
+          <span style="font-size:10px;color:var(--muted);min-width:28px">Файл</span>
+          <div class="period-group" id="filePresets"></div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <input id="startDate" type="date" style="min-width:140px"/>
+          <input id="startTime" type="time" value="00:00" style="min-width:90px"/>
+          <span style="color:var(--muted)">→</span>
+          <input id="endDate" type="date" style="min-width:140px"/>
+          <input id="endTime" type="time" value="23:59" style="min-width:90px"/>
+          <button id="applyRangeBtn">Применить</button>
+          <button id="resetZoomBtn">Сброс</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="row">
     <div class="chip">
       <div>
-        <label>Файл данных (окно NOAA)</label>
-        <select id="rangeSel">
-          <option value="6-hour">6 часов</option>
-          <option value="1-day">1 день</option>
-          <option value="3-day" selected>3 дня</option>
-          <option value="7-day">7 дней</option>
+        <label>Продукт данных</label>
+        <select id="productSel">
+          <optgroup label="Протоны">
+            <option value="integral-protons" selected>Интегральные протоны</option>
+            <option value="integral-protons-plot">Интегр. протоны (plot)</option>
+            <option value="differential-protons">Дифференц. протоны</option>
+            <option value="integral-proton-fluence">Флюенс протонов (7д)</option>
+          </optgroup>
+          <optgroup label="Электроны">
+            <option value="integral-electrons">Интегральные электроны</option>
+            <option value="differential-electrons">Дифференц. электроны</option>
+            <option value="integral-electron-fluence">Флюенс электронов (7д)</option>
+          </optgroup>
+          <optgroup label="Альфа-частицы">
+            <option value="differential-alphas">Дифференц. альфа</option>
+          </optgroup>
+          <optgroup label="Рентген / EM">
+            <option value="xrays">Рентген (X-ray)</option>
+            <option value="xray-background">X-ray фон (7д)</option>
+            <option value="euvs">EUVS (EUV спектр)</option>
+          </optgroup>
+          <optgroup label="Магнитное поле">
+            <option value="magnetometers">Магнитометры</option>
+          </optgroup>
         </select>
       </div>
     </div>
-
     <div class="chip">
       <div>
-        <label>Энергия</label>
-        <select id="energySel">
-          <option value=">=10 MeV" selected>&ge;10 MeV (S1–S5)</option>
-          <option value=">=1 MeV">&ge;1 MeV</option>
-          <option value=">=5 MeV">&ge;5 MeV</option>
-          <option value=">=30 MeV">&ge;30 MeV</option>
-          <option value=">=50 MeV">&ge;50 MeV</option>
-          <option value=">=60 MeV">&ge;60 MeV</option>
-          <option value=">=100 MeV">&ge;100 MeV</option>
-          <option value=">=500 MeV">&ge;500 MeV</option>
-        </select>
+        <label>Канал / Энергия</label>
+        <select id="energySel"></select>
       </div>
     </div>
-
-    <div class="chip" style="flex:1 1 320px;">
-      <div style="width:100%;">
-        <label>Период (локальное время устройства), до 50 лет назад от конца окна</label>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
-          <div>
-            <span style="font-size:11px;color:var(--muted);">Пресет</span>
-            <select id="presetSel" style="min-width:160px;">
-              <option value="">— выберите —</option>
-              <option value="full">Весь загруженный файл</option>
-              <option value="6h">Последние 6 ч</option>
-              <option value="12h">Последние 12 ч</option>
-              <option value="24h">Последние 24 ч</option>
-              <option value="3d">Последние 3 дня</option>
-              <option value="7d">Последние 7 дней</option>
-              <option value="30d">Последние 30 дней</option>
-              <option value="90d">Последние 90 дней</option>
-              <option value="1y">Последний год</option>
-              <option value="5y">Последние 5 лет</option>
-              <option value="10y">Последние 10 лет</option>
-              <option value="25y">Последние 25 лет</option>
-              <option value="50y">Последние 50 лет</option>
-            </select>
-          </div>
-        </div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-          <input id="startDt" type="datetime-local" title="Начало (не раньше данных и не дальше 50 лет от конца)" />
-          <input id="endDt" type="datetime-local" title="Конец" />
-        </div>
-        <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
-          <button id="applyRangeBtn">Применить</button>
-          <button id="resetZoomBtn">Сброс к файлу</button>
-        </div>
-        <div class="warn" id="periodHint"></div>
-      </div>
-    </div>
-
     <div class="chip">
       <div>
         <label>Автообновление</label>
@@ -158,78 +157,110 @@
           <option value="300">5мин</option>
         </select>
       </div>
-      <button id="reloadBtn">Обновить</button>
+      <button id="reloadBtn">⟳</button>
     </div>
-
-    <div class="chip" style="flex:1 1 260px;">
-      <div style="width:100%;">
-        <label>S-подсветка (только для ≥10 MeV)</label>
+    <div class="chip" style="flex:1 1 240px" id="sLevelChip">
+      <div style="width:100%">
+        <label>S-подсветка (≥10 MeV протоны)</label>
         <div class="slevels" id="sLevelControls"></div>
       </div>
     </div>
+  </div>
 
-    <details class="chip" id="displayPanel">
-      <summary>Отображение графика — цвета, сетка, шкала Y, кривая, высота…</summary>
-      <div class="disp-grid">
-        <div class="disp-item">
-          <label>Цвет линии</label>
-          <div class="inline">
-            <input type="color" id="lineColor" value="#e7eefc" />
-            <input type="text" id="lineColorHex" class="mono" style="width:7em;font-size:12px;" maxlength="9" placeholder="#rrggbb" />
+  <div class="row" style="gap:8px">
+    <details id="displaySettings" style="flex:1 1 420px">
+      <summary>Настройки отображения</summary>
+      <div class="panel-body">
+        <div class="sgrid">
+          <div class="si">
+            <label>Цвет линии</label>
+            <div class="sr">
+              <input type="color" id="lineColorPick" value="#e7eefc"/>
+              <span id="lineColorVal" class="mono" style="font-size:11px;color:var(--muted)">#e7eefc</span>
+            </div>
+          </div>
+          <div class="si">
+            <label>Толщина: <span id="lineWidthVal">2.2</span></label>
+            <input type="range" id="lineWidthRange" min="0.5" max="6" step="0.1" value="2.2"/>
+          </div>
+          <div class="si">
+            <label>Непрозрачность: <span id="lineOpacityVal">0.95</span></label>
+            <input type="range" id="lineOpacityRange" min="0.1" max="1" step="0.05" value="0.95"/>
+          </div>
+          <div class="si">
+            <label>Кривая</label>
+            <select id="curveTypeSel">
+              <option value="monotoneX" selected>Monotone X</option>
+              <option value="linear">Linear</option>
+              <option value="step">Step</option>
+              <option value="basis">Basis (сглажен.)</option>
+              <option value="natural">Natural</option>
+              <option value="catmullRom">Catmull-Rom</option>
+            </select>
+          </div>
+          <div class="si">
+            <label>Точки данных</label>
+            <div class="sr">
+              <input type="checkbox" id="showPointsCb"/>
+              <span style="font-size:11px;color:var(--muted)">Показать</span>
+              <input type="range" id="pointSizeRange" min="1" max="8" step="0.5" value="3" style="flex:1"/>
+              <span id="pointSizeVal" style="font-size:11px;color:var(--muted)">3</span>
+            </div>
+          </div>
+          <div class="si">
+            <label>Сетка</label>
+            <div class="sr">
+              <input type="checkbox" id="showGridCb" checked/>
+              <span style="font-size:11px;color:var(--muted)">Показать</span>
+              <input type="range" id="gridOpacityRange" min="0.02" max="0.30" step="0.01" value="0.08" style="flex:1"/>
+            </div>
+          </div>
+          <div class="si">
+            <label>Пороги S-уровней</label>
+            <div class="sr">
+              <input type="checkbox" id="showThresholdsCb" checked/>
+              <span style="font-size:11px;color:var(--muted)">Показать линии</span>
+            </div>
+          </div>
+          <div class="si">
+            <label>Y-ось</label>
+            <select id="yAxisMode">
+              <option value="auto" selected>Авто</option>
+              <option value="manual">Вручную</option>
+              <option value="full">Полный диапазон</option>
+            </select>
+            <div class="sr" id="yManualRow" style="margin-top:5px;display:none">
+              <input type="number" id="yMinInput" placeholder="Y min" style="width:80px"/>
+              <input type="number" id="yMaxInput" placeholder="Y max" style="width:80px"/>
+            </div>
           </div>
         </div>
-        <div class="disp-item">
-          <label>Толщина линии <span id="lineWVal" class="mono">2.2</span></label>
-          <input type="range" id="lineWidth" min="0.8" max="6" step="0.1" value="2.2" />
+      </div>
+    </details>
+
+    <details id="dataPanel" style="flex:1 1 320px">
+      <summary>Импорт / Экспорт данных</summary>
+      <div class="panel-body">
+        <div class="drop-zone" id="dropZone">
+          <div style="font-size:22px;margin-bottom:4px">📂</div>
+          <div>Перетащите файл сюда или нажмите</div>
+          <div style="font-size:10px;margin-top:3px">JSON (NOAA), CSV, TXT</div>
+          <input type="file" id="fileInput" accept=".json,.csv,.txt,.dat"/>
         </div>
-        <div class="disp-item">
-          <label>Кривая</label>
-          <select id="curveSel">
-            <option value="monotone" selected>Monotone X</option>
-            <option value="linear">Линейная</option>
-            <option value="step">Ступени</option>
-            <option value="basis">Сглаженная (basis)</option>
-          </select>
+        <div style="margin-top:8px">
+          <label>Свой URL (JSON / CSV)</label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="customUrl" placeholder="https://..." style="flex:1"/>
+            <button id="fetchUrlBtn">Загрузить</button>
+          </div>
         </div>
-        <div class="disp-item">
-          <label>Шкала Y</label>
-          <select id="yScaleSel">
-            <option value="log" selected>Логарифмическая</option>
-            <option value="linear">Линейная</option>
-          </select>
+        <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+          <button id="exportPngBtn">📷 PNG</button>
+          <button id="exportCsvBtn">📊 CSV</button>
+          <button id="exportSvgBtn">📋 SVG</button>
+          <button id="clearFileBtn" style="margin-left:auto">✕ Очистить файл</button>
         </div>
-        <div class="disp-item">
-          <label class="inline"><input type="checkbox" id="gridH" checked /> Горизонтальная сетка</label>
-        </div>
-        <div class="disp-item">
-          <label class="inline"><input type="checkbox" id="gridV" /> Вертикальная сетка</label>
-        </div>
-        <div class="disp-item">
-          <label>Прозрачность сетки <span id="gridOpVal" class="mono">0.08</span></label>
-          <input type="range" id="gridOpacity" min="0.02" max="0.22" step="0.01" value="0.08" />
-        </div>
-        <div class="disp-item">
-          <label>Число делений X (ориентир)</label>
-          <input type="range" id="xTicks" min="3" max="14" step="1" value="6" />
-          <span id="xTicksVal" class="mono">6</span>
-        </div>
-        <div class="disp-item">
-          <label>Высота SVG (px)</label>
-          <input type="range" id="chartHeight" min="320" max="900" step="20" value="560" />
-          <span id="chartHVal" class="mono">560</span>
-        </div>
-        <div class="disp-item">
-          <label class="inline"><input type="checkbox" id="showBands" checked /> Полосы S-уровней</label>
-        </div>
-        <div class="disp-item">
-          <label class="inline"><input type="checkbox" id="showThrLines" checked /> Линии порогов S</label>
-        </div>
-        <div class="disp-item">
-          <label class="inline"><input type="checkbox" id="showTooltip" checked /> Подсказка при наведении</label>
-        </div>
-        <div class="disp-item">
-          <label class="inline"><input type="checkbox" id="brushEnabled" checked /> Выделение на графике (brush zoom)</label>
-        </div>
+        <div id="fileInfo" style="font-size:10.5px;color:var(--muted);margin-top:7px"></div>
       </div>
     </details>
   </div>
@@ -243,746 +274,700 @@
   </div>
 </div>
 
+<div class="toolbar">
+  <div style="font-size:11px;color:var(--muted)" id="pointInfo"></div>
+</div>
+
 <div class="hint">
-  Выделяй диапазон прямо на графике (drag) — это zoom по времени (если включено в «Отображение»). Сброс — «Сброс к файлу».<br/>
-  Источник: <span class="mono">https://services.swpc.noaa.gov/json/goes/primary/integral-protons-*.json</span> — в файле только короткое «скользящее» окно (часы…дни), не архив за годы. Пресеты «год / 50 лет» ограничиваются <em>пересечением</em> с доступными точками и максимумом 50 лет.<br/>
-  Ось Y — по умолчанию логарифмическая (pfu).
+  Drag на графике — zoom по времени. Сброс — кнопка «Сброс».<br>
+  Все продукты: <a href="https://services.swpc.noaa.gov/json/goes/primary/" target="_blank" class="mono">services.swpc.noaa.gov/json/goes/primary/</a> (до 7 дней).<br>
+  Для более длинных периодов импортируйте файл из
+  <a href="https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/" target="_blank">NOAA NCEI</a>,
+  <a href="https://www.swpc.noaa.gov/products/goes-proton-flux" target="_blank">SWPC</a> или
+  <a href="https://cdaweb.gsfc.nasa.gov/" target="_blank">NASA CDAWeb</a>.
 </div>
 
 <script>
-(() => {
-  const MS_DAY = 864e5;
-  const MS_YEAR = 365.25 * MS_DAY;
-  const MAX_SPAN_MS = 50 * MS_YEAR;
+(()=>{
+/* ══════════ PRODUCT CATALOG ══════════
+   Fully synced with https://services.swpc.noaa.gov/json/goes/primary/
+   Each product knows its available time ranges, value field, channel field,
+   Y-axis type, unit, and whether S-level overlays apply.
+*/
+const PRODUCTS=[
+  {id:'integral-protons',       label:'Интегр. протоны',        unit:'pfu',               logY:true,  sLevels:true,  vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
+  {id:'integral-protons-plot',  label:'Интегр. протоны (plot)', unit:'pfu',               logY:true,  sLevels:true,  vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
+  {id:'differential-protons',   label:'Дифференц. протоны',     unit:'p/(cm²·s·sr·MeV)',  logY:true,  sLevels:false, vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
+  {id:'integral-proton-fluence',label:'Флюенс протонов',        unit:'#/cm²',             logY:true,  sLevels:false, vField:'fluence',    chField:'energy', ranges:['7-day']},
+  {id:'integral-electrons',     label:'Интегр. электроны',      unit:'pfu',               logY:true,  sLevels:false, vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
+  {id:'differential-electrons', label:'Дифференц. электроны',   unit:'e/(cm²·s·sr·keV)',  logY:true,  sLevels:false, vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
+  {id:'integral-electron-fluence',label:'Флюенс электронов',    unit:'#/cm²',             logY:true,  sLevels:false, vField:'fluence',    chField:'energy', ranges:['7-day']},
+  {id:'differential-alphas',    label:'Дифференц. альфа',       unit:'α/(cm²·s·sr·MeV)',  logY:true,  sLevels:false, vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
+  {id:'xrays',                  label:'Рентген (X-ray)',        unit:'W/m²',              logY:true,  sLevels:false, vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
+  {id:'xray-background',        label:'X-ray фон',             unit:'W/m²',              logY:true,  sLevels:false, vField:'background', chField:null,     ranges:['7-day']},
+  {id:'euvs',                   label:'EUVS (EUV)',             unit:'W/m²',              logY:true,  sLevels:false, vField:'value',      chField:'line',   ranges:['6-hour','1-day','3-day','7-day']},
+  {id:'magnetometers',          label:'Магнитометры',           unit:'nT',                logY:false, sLevels:false, vField:null,         chField:null,     ranges:['6-hour','1-day','3-day','7-day'], special:'mag'},
+];
 
-  const svg = d3.select("#chart");
-  const statusEl = document.getElementById("status");
-  const periodHintEl = document.getElementById("periodHint");
+const LIVE_P=[
+  {l:'6ч',r:'6-hour'},{l:'1д',r:'1-day'},{l:'3д',r:'3-day'},{l:'7д',r:'7-day'}
+];
+const FILE_P=[
+  {l:'27д',d:27},{l:'1м',d:30},{l:'3м',d:91},{l:'6м',d:182},
+  {l:'1г',d:365},{l:'2г',d:730},{l:'5г',d:1826},
+  {l:'10г',d:3652},{l:'25г',d:9131},{l:'50л',d:18262}
+];
+const SL=[
+  {id:'S1',thr:10},{id:'S2',thr:100},{id:'S3',thr:1000},{id:'S4',thr:10000},{id:'S5',thr:100000}
+];
+const SF={S1:'rgba(66,165,245,0.14)',S2:'rgba(126,87,194,0.14)',S3:'rgba(255,202,40,0.14)',S4:'rgba(255,112,67,0.16)',S5:'rgba(239,83,80,0.18)'};
+const SS={S1:'rgba(66,165,245,0.32)',S2:'rgba(126,87,194,0.32)',S3:'rgba(255,202,40,0.34)',S4:'rgba(255,112,67,0.36)',S5:'rgba(239,83,80,0.40)'};
+const CURVES={monotoneX:d3.curveMonotoneX,linear:d3.curveLinear,step:d3.curveStep,basis:d3.curveBasis,natural:d3.curveNatural,catmullRom:d3.curveCatmullRom};
 
-  const rangeSel = document.getElementById("rangeSel");
-  const energySel = document.getElementById("energySel");
-  const refreshSel = document.getElementById("refreshSel");
-  const reloadBtn = document.getElementById("reloadBtn");
-  const presetSel = document.getElementById("presetSel");
+/* ─────────── state ─────────── */
+const ST={
+  apiData:[],fileData:[],fullSeries:[],fullDomain:null,currentDomain:null,
+  src:'api',preset:'3д',product:'integral-protons',energy:'>=10 MeV',
+  lineColor:'#e7eefc',lineWidth:2.2,lineOpacity:.95,curve:'monotoneX',
+  showPts:false,ptSize:3,showGrid:true,gridOp:.08,showThr:true,
+  yMode:'auto',yMin:null,yMax:null,theme:'dark',
+  sOn:{S1:true,S2:true,S3:true,S4:true,S5:true},
+  timer:null
+};
 
-  const startDt = document.getElementById("startDt");
-  const endDt = document.getElementById("endDt");
-  const applyRangeBtn = document.getElementById("applyRangeBtn");
-  const resetZoomBtn = document.getElementById("resetZoomBtn");
+function curProd(){return PRODUCTS.find(p=>p.id===ST.product)||PRODUCTS[0];}
+function sActive(){const p=curProd();return p.sLevels&&ST.energy==='>=10 MeV';}
 
-  const sLevelControls = document.getElementById("sLevelControls");
+/* ─────────── DOM ─────────── */
+const $=id=>document.getElementById(id);
+const svg=d3.select('#chart'),statusEl=$('status'),dataBadge=$('dataBadge'),
+  productSel=$('productSel'),energySel=$('energySel'),refreshSel=$('refreshSel');
 
-  const lineColor = document.getElementById("lineColor");
-  const lineColorHex = document.getElementById("lineColorHex");
-  const lineWidth = document.getElementById("lineWidth");
-  const lineWVal = document.getElementById("lineWVal");
-  const curveSel = document.getElementById("curveSel");
-  const yScaleSel = document.getElementById("yScaleSel");
-  const gridH = document.getElementById("gridH");
-  const gridV = document.getElementById("gridV");
-  const gridOpacity = document.getElementById("gridOpacity");
-  const gridOpVal = document.getElementById("gridOpVal");
-  const xTicks = document.getElementById("xTicks");
-  const xTicksVal = document.getElementById("xTicksVal");
-  const chartHeight = document.getElementById("chartHeight");
-  const chartHVal = document.getElementById("chartHVal");
-  const showBands = document.getElementById("showBands");
-  const showThrLines = document.getElementById("showThrLines");
-  const showTooltip = document.getElementById("showTooltip");
-  const brushEnabled = document.getElementById("brushEnabled");
+/* ─────────── SVG setup ─────────── */
+const W=1080,H=560,MG={t:18,r:18,b:54,l:78},iW=W-MG.l-MG.r,iH=H-MG.t-MG.b;
+const g=svg.append('g').attr('transform',`translate(${MG.l},${MG.t})`);
+g.append('defs').append('clipPath').attr('id','cA').append('rect').attr('width',iW).attr('height',iH);
+const gB=g.append('g').attr('clip-path','url(#cA)');
+const gG=g.append('g'),gA=g.append('g'),gT=g.append('g');
+const gL=g.append('g').attr('clip-path','url(#cA)');
+const gO=g.append('g'),gBr=g.append('g');
+const xS=d3.scaleUtc().range([0,iW]);
+let yS=d3.scaleLog().range([iH,0]).clamp(true);
+const fU=d3.utcFormat('%Y-%m-%d %H:%M UTC'),fN=d3.format('.4~g');
 
-  let W = 1080, H = 560;
-  let margin = {top: 18, right: 18, bottom: 54, left: 78};
-  let innerW = W - margin.left - margin.right;
-  let innerH = H - margin.top - margin.bottom;
+/* ══════════ PARSING ══════════ */
 
-  const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-  const gBands = g.append("g");
-  const gGrid  = g.append("g");
-  const gAxes  = g.append("g");
-  const gThr   = g.append("g");
-  const gLine  = g.append("g");
-  const gOver  = g.append("g");
-  const gBrush = g.append("g");
+function parseApiRows(raw, prod){
+  if(prod.special==='mag') return parseMag(raw);
+  return raw.map(d=>{
+    const tt=d.time_tag;
+    const ch=prod.chField?(d[prod.chField]||'').toString().trim():'value';
+    const fx=d[prod.vField];
+    return{t:tt?new Date(tt):null, energy:ch, v:fx==null||fx===''?NaN:+fx};
+  }).filter(d=>d.t instanceof Date&&!isNaN(d.t));
+}
 
-  const x = d3.scaleUtc().range([0, innerW]);
-  let yLog = d3.scaleLog().range([innerH, 0]).clamp(true);
-  let yLin = d3.scaleLinear().range([innerH, 0]).clamp(true);
-
-  const fmtUtc = d3.utcFormat("%Y-%m-%d %H:%M UTC");
-  const fmtNum = d3.format(".4~g");
-
-  const sLevels = [
-    { id:"S1", thr:10,     next:100   },
-    { id:"S2", thr:100,    next:1000  },
-    { id:"S3", thr:1000,   next:10000 },
-    { id:"S4", thr:10000,  next:100000},
-    { id:"S5", thr:100000, next:Infinity},
-  ];
-
-  const sFill = {
-    S1: "rgba(66, 165, 245, 0.14)",
-    S2: "rgba(126, 87, 194, 0.14)",
-    S3: "rgba(255, 202, 40, 0.14)",
-    S4: "rgba(255, 112, 67, 0.16)",
-    S5: "rgba(239, 83, 80, 0.18)"
-  };
-  const sStroke = {
-    S1: "rgba(66, 165, 245, 0.32)",
-    S2: "rgba(126, 87, 194, 0.32)",
-    S3: "rgba(255, 202, 40, 0.34)",
-    S4: "rgba(255, 112, 67, 0.36)",
-    S5: "rgba(239, 83, 80, 0.40)"
-  };
-
-  let timer = null;
-
-  let fullSeries = [];
-  let currentEnergy = ">=10 MeV";
-  let fullDomain = null;
-  let currentDomain = null;
-  let sEnabled = { S1:true, S2:true, S3:true, S4:true, S5:true };
-  /** Одноразовая строка под статусом после успешного пресета */
-  let statusPresetNote = "";
-
-  const LS_KEY = "goes-proton-d3-ui-v1";
-  function loadUiPrefs() {
-    try {
-      const j = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
-      if (j.lineColor) { lineColor.value = j.lineColor; lineColorHex.value = j.lineColor; }
-      if (j.lineWidth != null) { lineWidth.value = j.lineWidth; lineWVal.textContent = String(j.lineWidth); }
-      if (j.curve) curveSel.value = j.curve;
-      if (j.yScale) yScaleSel.value = j.yScale;
-      if (j.gridH != null) gridH.checked = j.gridH;
-      if (j.gridV != null) gridV.checked = j.gridV;
-      if (j.gridOpacity != null) { gridOpacity.value = j.gridOpacity; gridOpVal.textContent = j.gridOpacity; }
-      if (j.xTicks != null) { xTicks.value = j.xTicks; xTicksVal.textContent = j.xTicks; }
-      if (j.chartHeight != null) { chartHeight.value = j.chartHeight; chartHVal.textContent = j.chartHeight; applySvgSize(); }
-      if (j.showBands != null) showBands.checked = j.showBands;
-      if (j.showThrLines != null) showThrLines.checked = j.showThrLines;
-      if (j.showTooltip != null) showTooltip.checked = j.showTooltip;
-      if (j.brushEnabled != null) brushEnabled.checked = j.brushEnabled;
-      if (j.displayOpen) document.getElementById("displayPanel").open = true;
-    } catch (_) {}
+function parseMag(raw){
+  const comps=['He','Hp','Hn','total'],rows=[];
+  for(const d of raw){
+    const tt=d.time_tag?new Date(d.time_tag):null;
+    if(!tt||isNaN(tt))continue;
+    for(const c of comps){if(d[c]!=null)rows.push({t:tt,energy:c,v:+d[c]});}
   }
-  function saveUiPrefs() {
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify({
-        lineColor: lineColor.value,
-        lineWidth: +lineWidth.value,
-        curve: curveSel.value,
-        yScale: yScaleSel.value,
-        gridH: gridH.checked,
-        gridV: gridV.checked,
-        gridOpacity: +gridOpacity.value,
-        xTicks: +xTicks.value,
-        chartHeight: +chartHeight.value,
-        showBands: showBands.checked,
-        showThrLines: showThrLines.checked,
-        showTooltip: showTooltip.checked,
-        brushEnabled: brushEnabled.checked,
-        displayOpen: document.getElementById("displayPanel").open,
-      }));
-    } catch (_) {}
+  return rows;
+}
+
+function parseGenericJson(raw){
+  return raw.map(d=>{
+    const tt=d.time_tag||d.time||d.timestamp||d.date;
+    const en=(d.energy||d.channel||d.label||d.line||'').toString().trim();
+    const fx=d.flux??d.value??d.pfu??d.flux_pfu??d.fluence??d.background;
+    return{t:tt?new Date(tt):null,energy:en||'value',v:fx==null||fx===''?NaN:+fx};
+  }).filter(d=>d.t instanceof Date&&!isNaN(d.t));
+}
+
+function parseCsv(txt){
+  const lines=txt.trim().split('\n');
+  let hi=0;
+  while(hi<lines.length&&/^[#:]/.test(lines[hi].trim()))hi++;
+  if(hi>=lines.length-1)return[];
+  const sep=lines[hi].includes('\t')?'\t':lines[hi].includes(';')?';':',';
+  const hdr=lines[hi].split(sep).map(h=>h.trim().toLowerCase().replace(/"/g,''));
+  const tC=hdr.findIndex(h=>/^(time_tag|time|timestamp|date|datetime|t)$/.test(h));
+  const fC=hdr.findIndex(h=>/^(flux|value|pfu|flux_pfu|proton_flux|fluence|background|v|y|total)$/.test(h));
+  const eC=hdr.findIndex(h=>/^(energy|channel|label|line|e)$/.test(h));
+  const ti=tC<0?0:tC,fi=fC<0?1:fC;
+  return lines.slice(hi+1).map(l=>{
+    const p=l.split(sep).map(s=>s.trim().replace(/"/g,''));
+    if(p.length<=Math.max(ti,fi))return null;
+    const dt=new Date(p[ti]),v=+p[fi];
+    const en=eC>=0&&p[eC]?p[eC]:'value';
+    return{t:dt,energy:en,v};
+  }).filter(d=>d&&d.t instanceof Date&&!isNaN(d.t));
+}
+
+function parseSpace(txt){
+  const rows=[];
+  for(const line of txt.trim().split('\n')){
+    if(/^[#:]/.test(line.trim())||!line.trim())continue;
+    const p=line.trim().split(/\s+/);if(p.length<5)continue;
+    const y=+p[0],m=+p[1],d=+p[2];
+    if(y<1970||y>2100||m<1||m>12||d<1||d>31)continue;
+    const hm=p[3].padStart(4,'0');
+    const dt=new Date(Date.UTC(y,m-1,d,+hm.slice(0,2),+hm.slice(2)));
+    for(let i=4;i<p.length;i++){const v=+p[i];if(isFinite(v)&&v>0&&v<1e12){rows.push({t:dt,energy:'value',v});break;}}
   }
+  return rows;
+}
 
-  function applySvgSize() {
-    H = +chartHeight.value;
-    chartHVal.textContent = String(H);
-    innerH = H - margin.top - margin.bottom;
-    yLog.range([innerH, 0]);
-    yLin.range([innerH, 0]);
-    x.range([0, innerW]);
-    svg.attr("viewBox", `0 0 ${W} ${H}`);
+function autoParse(txt,fn){
+  const ext=(fn||'').split('.').pop().toLowerCase();
+  if(ext==='json'||txt.trim()[0]==='['){try{const j=JSON.parse(txt);if(Array.isArray(j))return parseGenericJson(j);}catch(e){}}
+  let r=parseCsv(txt);if(r.length)return r;
+  r=parseSpace(txt);if(r.length)return r;
+  return parseCsv(txt);
+}
+
+function pickE(rows,ew,allowNeg){
+  let f=rows.filter(d=>(d.energy||'').toString().trim()===ew).filter(d=>isFinite(d.v)&&(allowNeg||d.v>0)).sort((a,b)=>a.t-b.t);
+  if(!f.length&&rows.length){
+    const es=[...new Set(rows.map(d=>d.energy))];
+    if(es.length===1)f=rows.filter(d=>isFinite(d.v)&&(allowNeg||d.v>0)).sort((a,b)=>a.t-b.t);
   }
-
-  function urlFor(range) {
-    return `https://services.swpc.noaa.gov/json/goes/primary/integral-protons-${range}.json?_=${Date.now()}`;
-  }
-
-  function parseRows(raw) {
-    return raw.map(d => {
-      const tt = d.time_tag || d.time || d.timestamp || d.date;
-      const en = (d.energy || d.channel || d.label || "").toString().trim();
-      const fx = d.flux ?? d.value ?? d.pfu ?? d.flux_pfu;
-      const dt = tt ? new Date(tt) : null;
-      const val = (fx === null || fx === undefined || fx === "") ? NaN : +fx;
-      return { t: dt, energy: en, v: val };
-    }).filter(d => d.t instanceof Date && !isNaN(d.t));
-  }
-
-  function pickEnergy(rows, energyWanted) {
-    return rows
-      .filter(d => (d.energy || "").toString().trim() === energyWanted)
-      .filter(d => isFinite(d.v) && d.v > 0)
-      .sort((a,b) => a.t - b.t);
-  }
-
-  /** Ограничение: внутри fullDomain и длина окна ≤ 50 лет */
-  function clampDomainToDataAndMaxSpan(domain) {
-    if (!fullDomain) return domain;
-    let [a, b] = domain;
-    const [fa, fb] = fullDomain;
-    if (+a >= +b) return [fa, fb];
-
-    let aa = new Date(Math.max(+a, +fa));
-    let bb = new Date(Math.min(+b, +fb));
-    if (+aa >= +bb) return [fa, fb];
-
-    if (+bb - +aa > MAX_SPAN_MS) {
-      aa = new Date(+bb - MAX_SPAN_MS);
-      if (+aa < +fa) aa = new Date(+fa);
-    }
-    if (+aa >= +bb) return [fa, fb];
-    return [aa, bb];
-  }
-
-  function toLocalInput(d) {
-    const pad = n => String(n).padStart(2,"0");
-    const yy = d.getFullYear();
-    const mm = pad(d.getMonth()+1);
-    const dd = pad(d.getDate());
-    const hh = pad(d.getHours());
-    const mi = pad(d.getMinutes());
-    return `${yy}-${mm}-${dd}T${hh}:${mi}`;
-  }
-
-  function setInputsFromDomain(domain) {
-    startDt.value = toLocalInput(domain[0]);
-    endDt.value   = toLocalInput(domain[1]);
-    updateInputBounds();
-  }
-
-  function updateInputBounds() {
-    if (!fullDomain) {
-      startDt.removeAttribute("min"); startDt.removeAttribute("max");
-      endDt.removeAttribute("min"); endDt.removeAttribute("max");
-      return;
-    }
-    const [fa, fb] = fullDomain;
-    const minStart = new Date(Math.max(+fa, +fb - MAX_SPAN_MS));
-    startDt.min = toLocalInput(fa);
-    startDt.max = toLocalInput(fb);
-    endDt.min = toLocalInput(minStart);
-    endDt.max = toLocalInput(fb);
-  }
-
-  function getDomainFromInputs() {
-    const a = startDt.value ? new Date(startDt.value) : null;
-    const b = endDt.value ? new Date(endDt.value) : null;
-    if (!a || !b || isNaN(a) || isNaN(b)) return null;
-    if (+a >= +b) return null;
-    return [a,b];
-  }
-
-  const presetMs = {
-    full: null,
-    "6h": 6 * 3600e3,
-    "12h": 12 * 3600e3,
-    "24h": 24 * 3600e3,
-    "3d": 3 * MS_DAY,
-    "7d": 7 * MS_DAY,
-    "30d": 30 * MS_DAY,
-    "90d": 90 * MS_DAY,
-    "1y": MS_YEAR,
-    "5y": 5 * MS_YEAR,
-    "10y": 10 * MS_YEAR,
-    "25y": 25 * MS_YEAR,
-    "50y": 50 * MS_YEAR,
-  };
-
-  const presetLabels = {
-    full: "весь файл",
-    "6h": "6 ч", "12h": "12 ч", "24h": "24 ч",
-    "3d": "3 дня", "7d": "7 дней", "30d": "30 дней", "90d": "90 дней",
-    "1y": "1 год", "5y": "5 лет", "10y": "10 лет", "25y": "25 лет", "50y": "50 лет",
-  };
-
-  function applyPreset(key) {
-    if (!key) return false;
-    if (!fullDomain) {
-      statusEl.textContent = "Пресет не применён: данные ещё не загружены (или ошибка сети). Подождите или нажмите «Обновить».";
-      return false;
-    }
-    const [fa, fb] = fullDomain;
-    let dom;
-    if (key === "full") {
-      dom = [fa, fb];
-    } else {
-      const ms = presetMs[key];
-      if (ms == null) return false;
-      const end = fb;
-      let start = new Date(+end - ms);
-      if (+start < +fa) start = new Date(+fa);
-      dom = clampDomainToDataAndMaxSpan([start, end]);
-    }
-    currentDomain = dom;
-    setInputsFromDomain(currentDomain);
-    statusPresetNote = `Пресет «${presetLabels[key] || key}» применён.`;
-    render();
-    saveUiPrefs();
-    return true;
-  }
-
-  function updatePeriodHint() {
-    if (!fullDomain) {
-      periodHintEl.textContent = "";
-      return;
-    }
-    const spanFile = fullDomain[1] - fullDomain[0];
-    const spanView = currentDomain ? (currentDomain[1] - currentDomain[0]) : 0;
-    const parts = [];
-    parts.push(`В файле NOAA: ~${(spanFile / MS_DAY).toFixed(2)} сут. данных (${fmtUtc(fullDomain[0]).slice(0,16)}…).`);
-    if (currentDomain && spanView < spanFile * 0.999) {
-      parts.push(`На графике: ~${(spanView / MS_DAY).toFixed(2)} сут.`);
-    }
-    if (spanView > MAX_SPAN_MS * 0.99) {
-      parts.push("Достигнут лимит 50 лет по оси X.");
-    }
-    periodHintEl.textContent = parts.join(" ");
-  }
-
-  function buildSControls() {
-    sLevelControls.innerHTML = "";
-    sLevels.forEach(lv => {
-      const wrap = document.createElement("div");
-      wrap.className = "sbox";
-
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.checked = !!sEnabled[lv.id];
-      cb.addEventListener("change", () => {
-        sEnabled[lv.id] = cb.checked;
-        render();
-        saveUiPrefs();
-      });
-
-      const lab = document.createElement("span");
-      lab.textContent = `${lv.id} (≥${lv.thr} pfu)`;
-      lab.style.color = "rgba(231,238,252,0.85)";
-      lab.style.fontSize = "12px";
-
-      const dot = document.createElement("span");
-      dot.style.display = "inline-block";
-      dot.style.width = "10px";
-      dot.style.height = "10px";
-      dot.style.borderRadius = "10px";
-      dot.style.background = sStroke[lv.id];
-      dot.style.marginRight = "6px";
-
-      wrap.appendChild(cb);
-      wrap.appendChild(dot);
-      wrap.appendChild(lab);
-      sLevelControls.appendChild(wrap);
-    });
-  }
-
-  function computeSIntervals(series) {
-    const out = { S1:[], S2:[], S3:[], S4:[], S5:[] };
-    if (!series.length) return out;
-    const levelOf = (v) => {
-      for (let i=sLevels.length-1; i>=0; i--) {
-        if (v >= sLevels[i].thr) return sLevels[i].id;
-      }
-      return null;
-    };
-    let cur = null;
-    for (let i=0; i<series.length; i++) {
-      const d = series[i];
-      const id = levelOf(d.v);
-      if (!id) {
-        if (cur) {
-          out[cur.id].push({a: cur.start, b: series[i-1].t});
-          cur = null;
-        }
-        continue;
-      }
-      if (!cur) cur = { id, start: d.t };
-      else if (cur.id !== id) {
-        out[cur.id].push({a: cur.start, b: series[i-1].t});
-        cur = { id, start: d.t };
-      }
-    }
-    if (cur) out[cur.id].push({a: cur.start, b: series[series.length-1].t});
-    return out;
-  }
-
-  function curveFn() {
-    const m = {
-      monotone: d3.curveMonotoneX,
-      linear: d3.curveLinear,
-      step: d3.curveStepAfter,
-      basis: d3.curveBasis,
-    };
-    return m[curveSel.value] || d3.curveMonotoneX;
-  }
-
-  function activeYScale() {
-    return yScaleSel.value === "linear" ? yLin : yLog;
-  }
-
-  function xTickFormat(spanMs) {
-    if (spanMs > 400 * MS_DAY) return d3.utcFormat("%Y");
-    if (spanMs > 120 * MS_DAY) return d3.utcFormat("%Y-%m");
-    if (spanMs > 2 * MS_DAY) return d3.utcFormat("%m-%d");
-    return d3.utcFormat("%m-%d %H:%M");
-  }
-
-  function render() {
-    gBands.selectAll("*").remove();
-    gGrid.selectAll("*").remove();
-    gAxes.selectAll("*").remove();
-    gThr.selectAll("*").remove();
-    gLine.selectAll("*").remove();
-    gOver.selectAll("*").remove();
-    gBrush.selectAll("*").remove();
-
-    applySvgSize();
-    updatePeriodHint();
-
-    if (!fullSeries.length || !currentDomain) {
-      statusPresetNote = "";
-      statusEl.textContent = "Нет данных (или выбранный канал пуст).";
-      return;
-    }
-
-    const series = fullSeries.filter(d => d.t >= currentDomain[0] && d.t <= currentDomain[1]);
-    if (!series.length) {
-      statusPresetNote = "";
-      statusEl.textContent = "В выбранном диапазоне времени нет точек.";
-      return;
-    }
-
-    x.domain(currentDomain);
-    const spanMs = +currentDomain[1] - +currentDomain[0];
-
-    const vMin = d3.min(series, d => d.v);
-    const vMax = d3.max(series, d => d.v);
-    const y = activeYScale();
-    if (yScaleSel.value === "log") {
-      const yMin = Math.max(1e-3, vMin * 0.8);
-      const yMax = Math.max(1, vMax * 1.2);
-      yLog.domain([yMin, yMax]);
-    } else {
-      const pad = Math.max(vMax * 0.05, 1e-6);
-      yLin.domain([Math.max(0, vMin - pad), vMax + pad]);
-    }
-
-    const yDom = y.domain();
-    const go = +gridOpacity.value;
-    const gridStroke = `rgba(255,255,255,${go})`;
-
-    if (currentEnergy === ">=10 MeV" && showBands.checked) {
-      const intervals = computeSIntervals(series);
-      const bandData = [];
-      Object.keys(intervals).forEach(id => {
-        if (!sEnabled[id]) return;
-        intervals[id].forEach(seg => bandData.push({id, a: seg.a, b: seg.b}));
-      });
-      gBands.selectAll("rect.band")
-        .data(bandData)
-        .enter().append("rect")
-        .attr("class","band")
-        .attr("x", d => x(d.a))
-        .attr("y", 0)
-        .attr("width", d => Math.max(1, x(d.b) - x(d.a)))
-        .attr("height", innerH)
-        .attr("fill", d => sFill[d.id] || "rgba(255,255,255,0.06)")
-        .attr("stroke", d => sStroke[d.id] || "rgba(255,255,255,0.12)")
-        .attr("stroke-width", 1);
-    }
-
-    const yTicks = yScaleSel.value === "log"
-      ? y.ticks(9).filter(t => t > 0)
-      : y.ticks(9);
-
-    if (gridH.checked) {
-      gGrid.selectAll("line.h").data(yTicks).enter()
-        .append("line")
-        .attr("class","h")
-        .attr("x1",0).attr("x2",innerW)
-        .attr("y1",d=>y(d)).attr("y2",d=>y(d))
-        .attr("stroke", gridStroke)
-        .attr("stroke-width",1);
-    }
-
-    if (gridV.checked) {
-      const xt = x.ticks(+xTicks.value);
-      gGrid.selectAll("line.v").data(xt).enter()
-        .append("line")
-        .attr("class","v")
-        .attr("y1",0).attr("y2",innerH)
-        .attr("x1",d=>x(d)).attr("x2",d=>x(d))
-        .attr("stroke", gridStroke)
-        .attr("stroke-width",1)
-        .attr("stroke-dasharray","4,6");
-    }
-
-    const tickN = +xTicks.value;
-    const xAxis = d3.axisBottom(x).ticks(tickN).tickFormat(xTickFormat(spanMs));
-    const yAxis = d3.axisLeft(y).ticks(9, "~g");
-
-    gAxes.append("g")
-      .attr("transform", `translate(0,${innerH})`)
-      .call(xAxis)
-      .call(s => s.selectAll("text").attr("fill","rgba(231,238,252,0.85)"))
-      .call(s => s.selectAll("path,line").attr("stroke","rgba(255,255,255,0.25)"));
-
-    gAxes.append("g")
-      .call(yAxis)
-      .call(s => s.selectAll("text").attr("fill","rgba(231,238,252,0.85)"))
-      .call(s => s.selectAll("path,line").attr("stroke","rgba(255,255,255,0.25)"));
-
-    if (currentEnergy === ">=10 MeV" && showThrLines.checked) {
-      const thr = sLevels
-        .map(d => ({name:d.id, v:d.thr}))
-        .filter(d => d.v >= yDom[0] && d.v <= yDom[1]);
-
-      const thrG = gThr.selectAll("g.thr").data(thr).enter().append("g").attr("class","thr");
-      thrG.append("line")
-        .attr("x1",0).attr("x2",innerW)
-        .attr("y1",d=>y(d.v)).attr("y2",d=>y(d.v))
-        .attr("stroke","rgba(255,255,255,0.22)")
-        .attr("stroke-dasharray","6,6");
-
-      thrG.append("text")
-        .attr("x", innerW - 6)
-        .attr("y", d => y(d.v) - 6)
-        .attr("text-anchor","end")
-        .attr("fill","rgba(231,238,252,0.70)")
-        .attr("font-size", 12)
-        .text(d => `${d.name}: ${d.v} pfu`);
-    }
-
-    const strokeCol = lineColor.value || "#e7eefc";
-    const line = d3.line()
-      .x(d => x(d.t))
-      .y(d => y(d.v))
-      .curve(curveFn());
-
-    gLine.append("path")
-      .datum(series)
-      .attr("fill","none")
-      .attr("stroke", strokeCol)
-      .attr("stroke-width", +lineWidth.value)
-      .attr("d", line);
-
-    const overlay = gOver.append("rect")
-      .attr("x",0).attr("y",0).attr("width",innerW).attr("height",innerH)
-      .attr("fill","transparent");
-
-    const tip = gOver.append("g").style("display","none");
-    tip.append("line")
-      .attr("y1",0).attr("y2",innerH)
-      .attr("stroke","rgba(255,255,255,0.25)")
-      .attr("stroke-dasharray","4,4");
-
-    const tipBox = tip.append("g");
-    tipBox.append("rect")
-      .attr("rx",10).attr("ry",10)
-      .attr("fill","rgba(17,24,42,0.96)")
-      .attr("stroke","rgba(255,255,255,0.10)");
-
-    const tipText1 = tipBox.append("text").attr("fill","rgba(231,238,252,0.95)").attr("font-size",13);
-    const tipText2 = tipBox.append("text").attr("fill","rgba(159,176,208,0.95)").attr("font-size",12);
-
-    const bisect = d3.bisector(d => d.t).left;
-
-    function levelLabel(v) {
-      if (currentEnergy !== ">=10 MeV") return "";
-      for (let i=sLevels.length-1; i>=0; i--) {
-        if (v >= sLevels[i].thr) return `  ${sLevels[i].id}`;
-      }
-      return "  <S1";
-    }
-
-    function showTip(evt) {
-      const [mx] = d3.pointer(evt, overlay.node());
-      const t0 = x.invert(mx);
-      const i = Math.min(series.length-1, Math.max(0, bisect(series, t0)));
-      const d = series[i];
-
-      tip.style("display", null);
-      tip.attr("transform", `translate(${x(d.t)},0)`);
-      tip.select("line").attr("x1",0).attr("x2",0);
-
-      const l1 = `${currentEnergy}  ${fmtNum(d.v)} pfu${levelLabel(d.v)}`;
-      const l2 = `${fmtUtc(d.t)}`;
-
-      tipText1.text(l1).attr("x", 12).attr("y", 20);
-      tipText2.text(l2).attr("x", 12).attr("y", 40);
-
-      const w = Math.max(240, (l1.length * 7.1));
-      const h = 54;
-      const xPos = (x(d.t) > innerW * 0.62) ? -w - 14 : 14;
-
-      tipBox.attr("transform", `translate(${xPos},10)`);
-      tipBox.select("rect").attr("width", w).attr("height", h);
-    }
-
-    if (showTooltip.checked) {
-      overlay
-        .on("pointerenter", () => tip.style("display", null))
-        .on("pointermove", showTip)
-        .on("pointerleave", () => tip.style("display","none"));
-    }
-
-    if (brushEnabled.checked) {
-      const brush = d3.brushX()
-        .extent([[0,0],[innerW,innerH]])
-        .on("end", (event) => {
-          if (!event.selection) return;
-          const [sx0, sx1] = event.selection;
-          const d0 = x.invert(sx0);
-          const d1 = x.invert(sx1);
-          currentDomain = clampDomainToDataAndMaxSpan([d0, d1]);
-          setInputsFromDomain(currentDomain);
-          presetSel.value = "";
-          render();
-        });
-      gBrush.call(brush);
-    }
-
-    const tMin = series[0].t;
-    const tMax = series[series.length-1].t;
-    const last = series[series.length-1];
-    const yLabel = yScaleSel.value === "log" ? "log" : "linear";
-
-    const note = statusPresetNote
-      ? `<br><span style="color:rgba(159,176,208,0.95);">${statusPresetNote}</span>`
-      : "";
-    statusPresetNote = "";
-
-    statusEl.innerHTML =
-      `Канал: <span class="mono">${currentEnergy}</span>, точек в окне: <span class="mono">${series.length}</span>, Y: <span class="mono">${yLabel}</span><br>` +
-      `Окно: <span class="mono">${fmtUtc(tMin)}</span> → <span class="mono">${fmtUtc(tMax)}</span><br>` +
-      `Последнее: <span class="mono">${fmtNum(last.v)} pfu</span> @ <span class="mono">${fmtUtc(last.t)}</span>` +
-      (currentEnergy === ">=10 MeV" ? ` (${levelLabel(last.v).trim()})` : "") +
-      note;
-  }
-
-  async function loadData() {
-    const range = rangeSel.value;
-    currentEnergy = energySel.value;
-
-    statusEl.textContent = "Загрузка…";
-
-    try {
-      const resp = await fetch(urlFor(range), { cache: "no-store" });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const raw = await resp.json();
-
-      const rows = parseRows(raw);
-      fullSeries = pickEnergy(rows, currentEnergy);
-
-      if (!fullSeries.length) {
-        fullDomain = null;
-        currentDomain = null;
-        render();
-        return;
-      }
-
-      fullDomain = d3.extent(fullSeries, d => d.t);
-
-      if (!currentDomain) {
-        currentDomain = fullDomain;
-      } else {
-        currentDomain = clampDomainToDataAndMaxSpan(currentDomain);
-      }
-      setInputsFromDomain(currentDomain);
-
-      sLevelControls.style.opacity = (currentEnergy === ">=10 MeV") ? "1" : "0.45";
-      Array.from(sLevelControls.querySelectorAll("input[type=checkbox]"))
-        .forEach(cb => cb.disabled = (currentEnergy !== ">=10 MeV"));
-
-      render();
-    } catch (e) {
-      statusEl.textContent = `Ошибка загрузки: ${e.message}`;
-    }
-  }
-
-  function scheduleRefresh() {
-    if (timer) { clearInterval(timer); timer = null; }
-    const s = +refreshSel.value;
-    if (s > 0) timer = setInterval(loadData, s * 1000);
-  }
-
-  function syncColorFromPicker() {
-    lineColorHex.value = lineColor.value;
-    saveUiPrefs();
-    render();
-  }
-  function syncColorFromHex() {
-    const v = lineColorHex.value.trim();
-    if (/^#[0-9A-Fa-f]{6}$/.test(v)) lineColor.value = v;
-    saveUiPrefs();
-    render();
-  }
-
-  rangeSel.addEventListener("change", () => { currentDomain = null; presetSel.value = ""; loadData(); });
-  energySel.addEventListener("change", () => { currentDomain = null; presetSel.value = ""; loadData(); });
-
-  refreshSel.addEventListener("change", () => { scheduleRefresh(); loadData(); });
-  reloadBtn.addEventListener("click", loadData);
-
-  let presetEventGuard = null;
-  function onPresetUserInput() {
-    const k = presetSel.value;
-    if (!k) return;
-    /* change + input подряд — не применяем пресет дважды */
-    if (presetEventGuard === k) return;
-    presetEventGuard = k;
-    applyPreset(k);
-    /* Сброс placeholder после тика: синхронный value="" в обработчике change иногда ломает WebKit */
-    setTimeout(() => {
-      presetSel.value = "";
-      presetEventGuard = null;
-    }, 0);
-  }
-  presetSel.addEventListener("change", onPresetUserInput);
-  presetSel.addEventListener("input", onPresetUserInput);
-
-  applyRangeBtn.addEventListener("click", () => {
-    if (!fullDomain) return;
-    const dom = getDomainFromInputs();
-    if (!dom) {
-      statusEl.textContent = "Неверный период: проверь start/end (start должен быть меньше end).";
-      return;
-    }
-    currentDomain = clampDomainToDataAndMaxSpan(dom);
-    setInputsFromDomain(currentDomain);
-    render();
-    saveUiPrefs();
+  return f;
+}
+
+function discoverChannels(data){
+  return[...new Set(data.map(d=>d.energy).filter(Boolean))];
+}
+
+function populateChannelSel(channels){
+  energySel.innerHTML='';
+  channels.forEach(ch=>{
+    const o=document.createElement('option');o.value=ch;o.textContent=ch;
+    energySel.appendChild(o);
   });
+  const prod=curProd();
+  if(prod.sLevels&&channels.includes('>=10 MeV')){energySel.value='>=10 MeV';ST.energy='>=10 MeV';}
+  else if(channels.length){energySel.value=channels[0];ST.energy=channels[0];}
+}
 
-  resetZoomBtn.addEventListener("click", () => {
-    if (!fullDomain) return;
-    currentDomain = fullDomain;
-    setInputsFromDomain(currentDomain);
-    render();
-    saveUiPrefs();
-  });
+/* ─────────── downsample ─────────── */
+function ds(data,max){
+  if(data.length<=max)return data;
+  const bs=Math.ceil(data.length/(max/2)),res=[data[0]];
+  for(let i=0;i<data.length;i+=bs){
+    const b=data.slice(i,Math.min(i+bs,data.length));if(!b.length)continue;
+    const mn=b.reduce((a,c)=>a.v<c.v?a:c),mx=b.reduce((a,c)=>a.v>c.v?a:c);
+    if(mn!==mx){mn.t<mx.t?res.push(mn,mx):res.push(mx,mn);}else res.push(mn);
+  }
+  res.push(data[data.length-1]);return res;
+}
 
-  [
-    lineColor, lineWidth, curveSel, yScaleSel, gridH, gridV, gridOpacity, xTicks,
-    chartHeight, showBands, showThrLines, showTooltip, brushEnabled,
-  ].forEach(el => el.addEventListener("input", () => {
-    lineWVal.textContent = lineWidth.value;
-    gridOpVal.textContent = gridOpacity.value;
-    xTicksVal.textContent = xTicks.value;
-    chartHVal.textContent = chartHeight.value;
-    saveUiPrefs();
-    render();
+/* ─────────── domain helpers ─────────── */
+function clampD(dom){
+  if(!ST.fullDomain)return dom;
+  const a=new Date(Math.max(+dom[0],+ST.fullDomain[0])),b=new Date(Math.min(+dom[1],+ST.fullDomain[1]));
+  return+a>=+b?ST.fullDomain:[a,b];
+}
+const pad2=n=>String(n).padStart(2,'0');
+function setInputs(dom){
+  $('startDate').value=`${dom[0].getFullYear()}-${pad2(dom[0].getMonth()+1)}-${pad2(dom[0].getDate())}`;
+  $('startTime').value=`${pad2(dom[0].getHours())}:${pad2(dom[0].getMinutes())}`;
+  $('endDate').value=`${dom[1].getFullYear()}-${pad2(dom[1].getMonth()+1)}-${pad2(dom[1].getDate())}`;
+  $('endTime').value=`${pad2(dom[1].getHours())}:${pad2(dom[1].getMinutes())}`;
+}
+function getInputDom(){
+  const sd=$('startDate').value,st=$('startTime').value||'00:00',ed=$('endDate').value,et=$('endTime').value||'23:59';
+  if(!sd||!ed)return null;
+  const a=new Date(`${sd}T${st}`),b=new Date(`${ed}T${et}`);
+  return(isNaN(a)||isNaN(b)||+a>=+b)?null:[a,b];
+}
+
+/* ─────────── theme colors ─────────── */
+function tc(){
+  const dk=ST.theme==='dark';
+  return{
+    txt:dk?'rgba(231,238,252,0.85)':'rgba(26,26,46,0.85)',
+    ax:dk?'rgba(255,255,255,0.25)':'rgba(0,0,0,0.25)',
+    tl:dk?'rgba(255,255,255,0.22)':'rgba(0,0,0,0.18)',
+    tt:dk?'rgba(231,238,252,0.70)':'rgba(26,26,46,0.65)',
+    ch:dk?'rgba(255,255,255,0.25)':'rgba(0,0,0,0.20)',
+    tbg:dk?'rgba(17,24,42,0.96)':'rgba(255,255,255,0.96)',
+    tbr:dk?'rgba(255,255,255,0.10)':'rgba(0,0,0,0.10)',
+    t1:dk?'rgba(231,238,252,0.95)':'rgba(26,26,46,0.95)',
+    t2:dk?'rgba(159,176,208,0.95)':'rgba(107,114,128,0.95)'
+  };
+}
+
+/* ─────────── s-intervals ─────────── */
+function sIntervals(ser){
+  const out={S1:[],S2:[],S3:[],S4:[],S5:[]};if(!ser.length)return out;
+  const lvOf=v=>{for(let i=SL.length-1;i>=0;i--)if(v>=SL[i].thr)return SL[i].id;return null;};
+  let cur=null;
+  for(let i=0;i<ser.length;i++){
+    const id=lvOf(ser[i].v);
+    if(!id){if(cur){out[cur.id].push({a:cur.s,b:ser[i-1].t});cur=null;}continue;}
+    if(!cur)cur={id,s:ser[i].t};
+    else if(cur.id!==id){out[cur.id].push({a:cur.s,b:ser[i-1].t});cur={id,s:ser[i].t};}
+  }
+  if(cur)out[cur.id].push({a:cur.s,b:ser[ser.length-1].t});
+  return out;
+}
+function lvLabel(v){
+  if(!sActive())return'';
+  for(let i=SL.length-1;i>=0;i--)if(v>=SL[i].thr)return'  '+SL[i].id;
+  return'  <S1';
+}
+
+/* ══════════ RENDER ══════════ */
+function render(){
+  gB.selectAll('*').remove();gG.selectAll('*').remove();gA.selectAll('*').remove();
+  gT.selectAll('*').remove();gL.selectAll('*').remove();gO.selectAll('*').remove();gBr.selectAll('*').remove();
+  if(!ST.fullSeries.length||!ST.currentDomain){statusEl.textContent='Нет данных.';$('pointInfo').textContent='';return;}
+
+  const prod=curProd();
+  const useLog=prod.logY;
+  const allowNeg=!useLog;
+
+  const raw=ST.fullSeries.filter(d=>d.t>=ST.currentDomain[0]&&d.t<=ST.currentDomain[1]);
+  if(!raw.length){statusEl.textContent='В выбранном диапазоне нет точек.';return;}
+
+  const ser=ds(raw,3000);
+  const c=tc();
+
+  xS.domain(ST.currentDomain);
+
+  /* Y scale — log or linear depending on product */
+  let yMin,yMax;
+  if(useLog){
+    yS=d3.scaleLog().range([iH,0]).clamp(true);
+    if(ST.yMode==='manual'&&ST.yMin!=null&&ST.yMax!=null){yMin=Math.max(1e-12,ST.yMin);yMax=Math.max(yMin*10,ST.yMax);}
+    else if(ST.yMode==='full'){yMin=1e-3;yMax=1e6;}
+    else{const mn=d3.min(raw,d=>d.v),mx=d3.max(raw,d=>d.v);yMin=Math.max(1e-12,mn*.8);yMax=Math.max(yMin*10,mx*1.2);}
+  }else{
+    yS=d3.scaleLinear().range([iH,0]);
+    if(ST.yMode==='manual'&&ST.yMin!=null&&ST.yMax!=null){yMin=ST.yMin;yMax=ST.yMax;}
+    else{const mn=d3.min(raw,d=>d.v),mx=d3.max(raw,d=>d.v);const pad=(mx-mn)*0.1||1;yMin=mn-pad;yMax=mx+pad;}
+  }
+  yS.domain([yMin,yMax]);
+
+  /* S bands */
+  if(sActive()){
+    const iv=sIntervals(raw),bd=[];
+    Object.keys(iv).forEach(id=>{if(!ST.sOn[id])return;iv[id].forEach(s=>bd.push({id,a:s.a,b:s.b}));});
+    gB.selectAll('rect').data(bd).enter().append('rect')
+      .attr('x',d=>xS(d.a)).attr('y',0)
+      .attr('width',d=>Math.max(1,xS(d.b)-xS(d.a))).attr('height',iH)
+      .attr('fill',d=>SF[d.id]).attr('stroke',d=>SS[d.id]).attr('stroke-width',1);
+  }
+
+  /* grid */
+  if(ST.showGrid){
+    const yt=useLog?yS.ticks(9).filter(t=>t>0):yS.ticks(10);
+    gG.selectAll('line').data(yt).enter().append('line')
+      .attr('x1',0).attr('x2',iW).attr('y1',d=>yS(d)).attr('y2',d=>yS(d))
+      .attr('stroke',ST.theme==='dark'?'#fff':'#000').attr('stroke-opacity',ST.gridOp);
+  }
+
+  /* tick format */
+  const spanD=(ST.currentDomain[1]-ST.currentDomain[0])/864e5;
+  let tFmt,tN;
+  if(spanD<=1){tFmt=d3.utcFormat('%H:%M');tN=8;}
+  else if(spanD<=7){tFmt=d3.utcFormat('%m-%d %H:%M');tN=6;}
+  else if(spanD<=90){tFmt=d3.utcFormat('%Y-%m-%d');tN=7;}
+  else if(spanD<=730){tFmt=d3.utcFormat('%Y-%m');tN=8;}
+  else{tFmt=d3.utcFormat('%Y');tN=8;}
+
+  /* axes */
+  gA.append('g').attr('transform',`translate(0,${iH})`).call(d3.axisBottom(xS).ticks(tN).tickFormat(tFmt))
+    .call(s=>{s.selectAll('text').attr('fill',c.txt).attr('font-size',11);s.selectAll('path,line').attr('stroke',c.ax);});
+  const yAxisGen=useLog?d3.axisLeft(yS).ticks(9,'~g'):d3.axisLeft(yS).ticks(10);
+  gA.append('g').call(yAxisGen)
+    .call(s=>{s.selectAll('text').attr('fill',c.txt).attr('font-size',11);s.selectAll('path,line').attr('stroke',c.ax);});
+  gA.append('text').attr('transform','rotate(-90)').attr('x',-iH/2).attr('y',-58)
+    .attr('text-anchor','middle').attr('fill',c.tt).attr('font-size',12).text(prod.unit);
+
+  /* threshold lines (only integral protons >=10 MeV) */
+  if(ST.showThr&&sActive()){
+    const th=SL.map(d=>({n:d.id,v:d.thr})).filter(d=>d.v>=yS.domain()[0]&&d.v<=yS.domain()[1]);
+    const tg=gT.selectAll('g').data(th).enter().append('g');
+    tg.append('line').attr('x1',0).attr('x2',iW).attr('y1',d=>yS(d.v)).attr('y2',d=>yS(d.v))
+      .attr('stroke',c.tl).attr('stroke-dasharray','6,6');
+    tg.append('text').attr('x',iW-6).attr('y',d=>yS(d.v)-6).attr('text-anchor','end')
+      .attr('fill',c.tt).attr('font-size',12).text(d=>`${d.n}: ${d.v} pfu`);
+  }
+
+  /* line */
+  const cf=CURVES[ST.curve]||d3.curveMonotoneX;
+  const lineGen=d3.line().x(d=>xS(d.t)).y(d=>yS(d.v)).curve(cf);
+  if(useLog) lineGen.defined(d=>d.v>0);
+  gL.append('path').datum(ser).attr('fill','none')
+    .attr('stroke',ST.lineColor).attr('stroke-width',ST.lineWidth).attr('stroke-opacity',ST.lineOpacity)
+    .attr('d',lineGen);
+
+  /* points */
+  if(ST.showPts&&ser.length<2000){
+    gL.selectAll('circle').data(ser.filter(d=>!useLog||d.v>0)).enter().append('circle')
+      .attr('cx',d=>xS(d.t)).attr('cy',d=>yS(d.v)).attr('r',ST.ptSize)
+      .attr('fill',ST.lineColor).attr('fill-opacity',ST.lineOpacity*.7);
+  }
+
+  /* tooltip */
+  const ov=gO.append('rect').attr('width',iW).attr('height',iH).attr('fill','transparent');
+  const tip=gO.append('g').style('display','none');
+  tip.append('line').attr('y1',0).attr('y2',iH).attr('stroke',c.ch).attr('stroke-dasharray','4,4');
+  const tDot=tip.append('circle').attr('r',4).attr('fill',ST.lineColor).attr('stroke',c.tbg).attr('stroke-width',2);
+  const tBox=tip.append('g');
+  tBox.append('rect').attr('rx',10).attr('ry',10).attr('fill',c.tbg).attr('stroke',c.tbr);
+  const t1=tBox.append('text').attr('fill',c.t1).attr('font-size',13);
+  const t2=tBox.append('text').attr('fill',c.t2).attr('font-size',12);
+  const bis=d3.bisector(d=>d.t).left;
+
+  function showTip(ev){
+    const[mx]=d3.pointer(ev,ov.node()),t0=xS.invert(mx);
+    const i=Math.min(raw.length-1,Math.max(0,bis(raw,t0))),d=raw[i];
+    tip.style('display',null);
+    const px=xS(d.t),py=yS(d.v);
+    tip.select('line').attr('x1',px).attr('x2',px);
+    tDot.attr('cx',px).attr('cy',py);
+    const l1=`${ST.energy}  ${fN(d.v)} ${prod.unit}${lvLabel(d.v)}`,l2=fU(d.t);
+    t1.text(l1).attr('x',12).attr('y',20);t2.text(l2).attr('x',12).attr('y',40);
+    const w=Math.max(260,l1.length*7.2),h=54;
+    const xP=px>iW*.6?px-w-18:px+18,yP=Math.min(iH-h-10,Math.max(10,py-h/2));
+    tBox.attr('transform',`translate(${xP},${yP})`);
+    tBox.select('rect').attr('width',w).attr('height',h);
+  }
+  ov.on('pointerenter',()=>tip.style('display',null))
+    .on('pointermove',showTip)
+    .on('pointerleave',()=>tip.style('display','none'));
+
+  /* brush */
+  gBr.call(d3.brushX().extent([[0,0],[iW,iH]]).on('end',ev=>{
+    if(!ev.selection)return;
+    ST.currentDomain=[xS.invert(ev.selection[0]),xS.invert(ev.selection[1])];
+    setInputs(ST.currentDomain);render();
   }));
-  lineColor.addEventListener("change", syncColorFromPicker);
-  lineColorHex.addEventListener("change", syncColorFromHex);
 
-  document.getElementById("displayPanel").addEventListener("toggle", saveUiPrefs);
+  /* status */
+  const tMin=raw[0].t,tMax=raw[raw.length-1].t,last=raw[raw.length-1];
+  statusEl.innerHTML=
+    `Продукт: <span class="mono">${prod.label}</span>, канал: <span class="mono">${ST.energy}</span>, точек: <span class="mono">${raw.length}</span>`+
+    (ser.length<raw.length?` (отрисовано: ${ser.length})`:'')+`<br>`+
+    `Окно: <span class="mono">${fU(tMin)}</span> → <span class="mono">${fU(tMax)}</span><br>`+
+    `Последнее: <span class="mono">${fN(last.v)} ${prod.unit}</span> @ <span class="mono">${fU(last.t)}</span>`+
+    (sActive()?` (${lvLabel(last.v).trim()})`:'');
+  $('pointInfo').innerHTML=
+    `Всего в наборе: <span class="mono">${ST.fullSeries.length}</span> · `+
+    `Источник: <span class="badge ${ST.src}">${ST.src==='api'?'LIVE':'FILE'}</span>`;
+}
 
-  buildSControls();
-  loadUiPrefs();
-  scheduleRefresh();
-  loadData();
+/* ─────────── data flow ─────────── */
+function updateFromSrc(){
+  const src=ST.src==='file'?ST.fileData:ST.apiData;
+  const prod=curProd();
+  ST.fullSeries=pickE(src,ST.energy,!prod.logY);
+  if(!ST.fullSeries.length){ST.fullDomain=null;ST.currentDomain=null;render();return;}
+  ST.fullDomain=d3.extent(ST.fullSeries,d=>d.t);
+  ST.currentDomain=ST.currentDomain?clampD(ST.currentDomain):ST.fullDomain;
+  setInputs(ST.currentDomain);updSCtrl();render();
+}
+
+function resolveRange(desired){
+  const prod=curProd();
+  if(prod.ranges.includes(desired))return desired;
+  return prod.ranges[prod.ranges.length-1];
+}
+
+async function loadLive(apiRange){
+  const prod=curProd();
+  const actualRange=resolveRange(apiRange);
+  ST.src='api';
+  dataBadge.textContent='LIVE';dataBadge.className='badge live';
+  statusEl.textContent='Загрузка…';
+  const url=`https://services.swpc.noaa.gov/json/goes/primary/${prod.id}-${actualRange}.json?_=${Date.now()}`;
+  try{
+    const r=await fetch(url,{cache:'no-store'});
+    if(!r.ok)throw new Error(`HTTP ${r.status} — ${url}`);
+    const raw=await r.json();
+    ST.apiData=parseApiRows(raw,prod);
+    const channels=discoverChannels(ST.apiData);
+    populateChannelSel(channels);
+    ST.currentDomain=null;
+    updateFromSrc();
+  }catch(e){statusEl.textContent=`Ошибка: ${e.message}`;}
+  updLivePresetState();updHighlight();
+}
+
+function loadFileView(data,fn){
+  ST.fileData=data;ST.src='file';ST.currentDomain=null;
+  dataBadge.textContent='FILE';dataBadge.className='badge file';
+  const channels=discoverChannels(data);
+  populateChannelSel(channels);
+  const dom=d3.extent(data.filter(d=>d.t),d=>d.t);
+  $('fileInfo').innerHTML=
+    `Файл: <span class="mono">${fn||'imported'}</span><br>`+
+    `Записей: <span class="mono">${data.length}</span><br>`+
+    `Период: <span class="mono">${dom[0]?fU(dom[0]):'?'}</span> → <span class="mono">${dom[1]?fU(dom[1]):'?'}</span><br>`+
+    `Каналы: <span class="mono">${channels.join(', ')}</span>`;
+  updateFromSrc();updFilePr();updHighlight();
+}
+
+/* ─────────── UI build ─────────── */
+function buildLP(){
+  const c=$('livePresets');
+  LIVE_P.forEach(p=>{
+    const b=document.createElement('button');b.className='pbtn';b.textContent=p.l;b.dataset.range=p.r;
+    b.addEventListener('click',()=>{ST.preset=p.l;loadLive(p.r);});
+    c.appendChild(b);
+  });
+}
+function updLivePresetState(){
+  const prod=curProd();
+  document.querySelectorAll('#livePresets .pbtn').forEach(b=>{
+    b.classList.toggle('disabled',!prod.ranges.includes(b.dataset.range));
+  });
+}
+function buildFP(){
+  const c=$('filePresets');
+  FILE_P.forEach(p=>{
+    const b=document.createElement('button');b.className='pbtn nf';b.textContent=p.l;b.dataset.days=p.d;
+    b.addEventListener('click',()=>{
+      if(!ST.fileData.length){
+        statusEl.textContent=`Для периода «${p.l}» нужен файл с историческими данными.`;
+        $('dataPanel').open=true;return;
+      }
+      const prod=curProd();
+      ST.src='file';ST.preset=p.l;
+      dataBadge.textContent='FILE';dataBadge.className='badge file';
+      const fs=pickE(ST.fileData,ST.energy,!prod.logY);
+      if(!fs.length){statusEl.textContent=`Нет данных для «${ST.energy}» в файле.`;return;}
+      ST.fullSeries=fs;ST.fullDomain=d3.extent(fs,d=>d.t);
+      const end=d3.max(fs,d=>d.t),start=new Date(+end-p.d*864e5);
+      ST.currentDomain=clampD([start,end]);setInputs(ST.currentDomain);updSCtrl();render();updHighlight();
+    });
+    c.appendChild(b);
+  });
+}
+function updFilePr(){
+  const hd=ST.fileData.length>0;
+  document.querySelectorAll('.pbtn.nf').forEach(b=>b.classList.toggle('hd',hd));
+}
+function updHighlight(){
+  document.querySelectorAll('.pbtn').forEach(b=>b.classList.toggle('active',b.textContent===ST.preset));
+}
+
+function buildSC(){
+  const el=$('sLevelControls');el.innerHTML='';
+  SL.forEach(lv=>{
+    const w=document.createElement('div');w.className='sbox';
+    const cb=document.createElement('input');cb.type='checkbox';cb.checked=!!ST.sOn[lv.id];
+    cb.addEventListener('change',()=>{ST.sOn[lv.id]=cb.checked;render();saveSt();});
+    const dot=document.createElement('span');
+    dot.style.cssText=`display:inline-block;width:9px;height:9px;border-radius:9px;background:${SS[lv.id]}`;
+    const lab=document.createElement('span');lab.textContent=`${lv.id} (≥${lv.thr})`;lab.style.fontSize='11px';
+    w.appendChild(cb);w.appendChild(dot);w.appendChild(lab);el.appendChild(w);
+  });
+}
+function updSCtrl(){
+  const show=sActive();
+  $('sLevelChip').style.opacity=show?'1':'.35';
+  $('sLevelControls').querySelectorAll('input[type=checkbox]').forEach(c=>c.disabled=!show);
+}
+
+/* ─────────── file import ─────────── */
+function handleFile(f){
+  statusEl.textContent=`Чтение: ${f.name}…`;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const d=autoParse(r.result,f.name);
+      if(!d.length){statusEl.textContent='Не удалось распознать формат.';return;}
+      loadFileView(d,f.name);
+    }catch(e){statusEl.textContent=`Ошибка: ${e.message}`;}
+  };
+  r.readAsText(f);
+}
+
+/* ─────────── export ─────────── */
+function exportPng(){
+  const svgEl=$('chart'),svgData=new XMLSerializer().serializeToString(svgEl);
+  const canvas=document.createElement('canvas');const sc=2;canvas.width=W*sc;canvas.height=H*sc;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle=ST.theme==='dark'?'#11182a':'#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  const img=new Image(),blob=new Blob([svgData],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob);
+  img.onload=()=>{ctx.drawImage(img,0,0,canvas.width,canvas.height);URL.revokeObjectURL(url);
+    const a=document.createElement('a');a.download=`goes_${ST.product}_${new Date().toISOString().slice(0,10)}.png`;a.href=canvas.toDataURL('image/png');a.click();};
+  img.src=url;
+}
+function exportCsv(){
+  if(!ST.fullSeries.length)return;const prod=curProd();
+  const dom=ST.currentDomain||ST.fullDomain,ser=ST.fullSeries.filter(d=>d.t>=dom[0]&&d.t<=dom[1]);
+  let csv=`time_tag,channel,value_${prod.unit.replace(/[^a-zA-Z0-9]/g,'_')}\n`;
+  ser.forEach(d=>{csv+=`${d.t.toISOString()},${ST.energy},${d.v}\n`;});
+  const a=document.createElement('a');a.download=`goes_${ST.product}_${ST.energy.replace(/[^a-zA-Z0-9]/g,'')}.csv`;
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.click();
+}
+function exportSvg(){
+  const svgEl=$('chart'),svgData=new XMLSerializer().serializeToString(svgEl);
+  const a=document.createElement('a');a.download=`goes_${ST.product}.svg`;
+  a.href=URL.createObjectURL(new Blob([svgData],{type:'image/svg+xml'}));a.click();
+}
+
+/* ─────────── refresh ─────────── */
+function schedRefresh(){
+  if(ST.timer){clearInterval(ST.timer);ST.timer=null;}
+  const s=+refreshSel.value;
+  if(s>0&&ST.src==='api'){
+    ST.timer=setInterval(()=>{
+      if(ST.src==='api'){const p=LIVE_P.find(x=>x.l===ST.preset);if(p)loadLive(p.r);}
+    },s*1000);
+  }
+}
+
+/* ─────────── settings persistence ─────────── */
+function saveSt(){
+  try{localStorage.setItem('goes_dx_s',JSON.stringify({
+    product:ST.product,energy:ST.energy,
+    lineColor:ST.lineColor,lineWidth:ST.lineWidth,lineOpacity:ST.lineOpacity,curve:ST.curve,
+    showPts:ST.showPts,ptSize:ST.ptSize,showGrid:ST.showGrid,gridOp:ST.gridOp,showThr:ST.showThr,
+    yMode:ST.yMode,yMin:ST.yMin,yMax:ST.yMax,theme:ST.theme,sOn:ST.sOn
+  }));}catch(e){}
+}
+function loadSt(){
+  try{
+    const r=localStorage.getItem('goes_dx_s');if(!r)return;
+    const s=JSON.parse(r);
+    if(s.product){ST.product=s.product;productSel.value=s.product;}
+    if(s.lineColor){ST.lineColor=s.lineColor;$('lineColorPick').value=s.lineColor;$('lineColorVal').textContent=s.lineColor;}
+    if(s.lineWidth!=null){ST.lineWidth=s.lineWidth;$('lineWidthRange').value=s.lineWidth;$('lineWidthVal').textContent=s.lineWidth;}
+    if(s.lineOpacity!=null){ST.lineOpacity=s.lineOpacity;$('lineOpacityRange').value=s.lineOpacity;$('lineOpacityVal').textContent=s.lineOpacity;}
+    if(s.curve){ST.curve=s.curve;$('curveTypeSel').value=s.curve;}
+    if(s.showPts!=null){ST.showPts=s.showPts;$('showPointsCb').checked=s.showPts;}
+    if(s.ptSize!=null){ST.ptSize=s.ptSize;$('pointSizeRange').value=s.ptSize;$('pointSizeVal').textContent=s.ptSize;}
+    if(s.showGrid!=null){ST.showGrid=s.showGrid;$('showGridCb').checked=s.showGrid;}
+    if(s.gridOp!=null){ST.gridOp=s.gridOp;$('gridOpacityRange').value=s.gridOp;}
+    if(s.showThr!=null){ST.showThr=s.showThr;$('showThresholdsCb').checked=s.showThr;}
+    if(s.yMode){ST.yMode=s.yMode;$('yAxisMode').value=s.yMode;$('yManualRow').style.display=s.yMode==='manual'?'flex':'none';}
+    if(s.yMin!=null){ST.yMin=s.yMin;$('yMinInput').value=s.yMin;}
+    if(s.yMax!=null){ST.yMax=s.yMax;$('yMaxInput').value=s.yMax;}
+    if(s.theme){ST.theme=s.theme;document.body.dataset.theme=s.theme;}
+    if(s.sOn)ST.sOn=s.sOn;
+    if(s.energy)ST.energy=s.energy;
+  }catch(e){}
+}
+
+/* ─────────── theme ─────────── */
+function toggleTheme(){
+  ST.theme=ST.theme==='dark'?'light':'dark';
+  document.body.dataset.theme=ST.theme;
+  if(ST.theme==='light'&&ST.lineColor==='#e7eefc'){ST.lineColor='#1a1a2e';$('lineColorPick').value='#1a1a2e';$('lineColorVal').textContent='#1a1a2e';}
+  else if(ST.theme==='dark'&&ST.lineColor==='#1a1a2e'){ST.lineColor='#e7eefc';$('lineColorPick').value='#e7eefc';$('lineColorVal').textContent='#e7eefc';}
+  render();saveSt();
+}
+
+/* ══════════ INIT ══════════ */
+function init(){
+  loadSt();buildLP();buildFP();buildSC();updFilePr();
+
+  const now=new Date();
+  $('endDate').value=`${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())}`;
+  const d3a=new Date(+now-3*864e5);
+  $('startDate').value=`${d3a.getFullYear()}-${pad2(d3a.getMonth()+1)}-${pad2(d3a.getDate())}`;
+
+  $('themeBtn').addEventListener('click',toggleTheme);
+
+  /* Product change → re-fetch, re-discover channels */
+  productSel.addEventListener('change',()=>{
+    ST.product=productSel.value;
+    ST.currentDomain=null;
+    updLivePresetState();
+    const bestRange=resolveRange(LIVE_P.find(x=>x.l===ST.preset)?.r||'3-day');
+    const preset=LIVE_P.find(x=>x.r===bestRange);
+    if(preset)ST.preset=preset.l;
+    loadLive(bestRange);
+    saveSt();
+  });
+
+  energySel.addEventListener('change',()=>{ST.energy=energySel.value;ST.currentDomain=null;updateFromSrc();saveSt();});
+  refreshSel.addEventListener('change',()=>{schedRefresh();});
+  $('reloadBtn').addEventListener('click',()=>{
+    if(ST.src==='api'){const p=LIVE_P.find(x=>x.l===ST.preset);if(p)loadLive(p.r);}
+    else updateFromSrc();
+  });
+
+  $('applyRangeBtn').addEventListener('click',()=>{
+    const dom=getInputDom();
+    if(!dom){statusEl.textContent='Неверный период.';return;}
+    if(ST.fileData.length){
+      const prod=curProd();
+      const fs=pickE(ST.fileData,ST.energy,!prod.logY),fd=fs.length?d3.extent(fs,d=>d.t):null;
+      if(fd&&dom[0]>=new Date(+fd[0]-864e5)&&dom[1]<=new Date(+fd[1]+864e5)){
+        if(ST.src!=='file'){ST.src='file';ST.fullSeries=fs;ST.fullDomain=fd;dataBadge.textContent='FILE';dataBadge.className='badge file';}
+      }
+    }
+    if(!ST.fullDomain){statusEl.textContent='Нет данных.';return;}
+    ST.currentDomain=clampD(dom);setInputs(ST.currentDomain);ST.preset='';updHighlight();render();
+  });
+  $('resetZoomBtn').addEventListener('click',()=>{if(!ST.fullDomain)return;ST.currentDomain=ST.fullDomain;setInputs(ST.currentDomain);render();});
+
+  /* display settings */
+  const rs=()=>{render();saveSt();};
+  $('lineColorPick').addEventListener('input',e=>{ST.lineColor=e.target.value;$('lineColorVal').textContent=e.target.value;rs();});
+  $('lineWidthRange').addEventListener('input',e=>{ST.lineWidth=+e.target.value;$('lineWidthVal').textContent=e.target.value;rs();});
+  $('lineOpacityRange').addEventListener('input',e=>{ST.lineOpacity=+e.target.value;$('lineOpacityVal').textContent=e.target.value;rs();});
+  $('curveTypeSel').addEventListener('change',e=>{ST.curve=e.target.value;rs();});
+  $('showPointsCb').addEventListener('change',e=>{ST.showPts=e.target.checked;rs();});
+  $('pointSizeRange').addEventListener('input',e=>{ST.ptSize=+e.target.value;$('pointSizeVal').textContent=e.target.value;rs();});
+  $('showGridCb').addEventListener('change',e=>{ST.showGrid=e.target.checked;rs();});
+  $('gridOpacityRange').addEventListener('input',e=>{ST.gridOp=+e.target.value;rs();});
+  $('showThresholdsCb').addEventListener('change',e=>{ST.showThr=e.target.checked;rs();});
+  $('yAxisMode').addEventListener('change',e=>{ST.yMode=e.target.value;$('yManualRow').style.display=e.target.value==='manual'?'flex':'none';rs();});
+  $('yMinInput').addEventListener('change',e=>{ST.yMin=e.target.value?+e.target.value:null;rs();});
+  $('yMaxInput').addEventListener('change',e=>{ST.yMax=e.target.value?+e.target.value:null;rs();});
+
+  /* file */
+  const dz=$('dropZone'),fi=$('fileInput');
+  dz.addEventListener('click',()=>fi.click());
+  fi.addEventListener('change',()=>{if(fi.files[0])handleFile(fi.files[0]);});
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0]);});
+
+  $('clearFileBtn').addEventListener('click',()=>{
+    ST.fileData=[];ST.src='api';$('fileInfo').textContent='';updFilePr();
+    ST.currentDomain=null;
+    const bestRange=resolveRange('3-day');
+    loadLive(bestRange);ST.preset='3д';updHighlight();
+  });
+
+  /* custom URL */
+  $('fetchUrlBtn').addEventListener('click',async()=>{
+    const url=$('customUrl').value.trim();if(!url){statusEl.textContent='Введите URL.';return;}
+    statusEl.textContent=`Загрузка: ${url}…`;
+    try{
+      const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);
+      const ct=r.headers.get('content-type')||'';
+      let data;
+      if(ct.includes('json')){data=parseGenericJson(await r.json());}
+      else{const txt=await r.text();data=autoParse(txt,'remote.csv');}
+      if(!data.length){statusEl.textContent='Данных не найдено.';return;}
+      loadFileView(data,url.split('/').pop()||'remote');
+    }catch(e){statusEl.textContent=`Ошибка: ${e.message}`;}
+  });
+
+  /* export */
+  $('exportPngBtn').addEventListener('click',exportPng);
+  $('exportCsvBtn').addEventListener('click',exportCsv);
+  $('exportSvgBtn').addEventListener('click',exportSvg);
+
+  /* go */
+  schedRefresh();
+  const initRange=resolveRange('3-day');
+  loadLive(initRange);ST.preset=LIVE_P.find(p=>p.r===initRange)?.l||'3д';updHighlight();
+}
+
+init();
 })();
 </script>
 </body>
