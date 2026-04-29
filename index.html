@@ -28,6 +28,8 @@
       padding:10px 12px; font-size:14px;
     }
     input[type="datetime-local"]{ min-width: 220px; }
+    input[type="color"]{ width:44px; height:40px; padding:4px; cursor:pointer; }
+    input[type="range"]{ width:120px; vertical-align:middle; }
     button{ cursor:pointer; }
     .status{ font-size:12px; color:var(--muted); margin-top:10px; line-height:1.35; }
     .wrap{ padding:0 10px 14px; }
@@ -44,6 +46,24 @@
     .slevels .sbox{ display:flex; gap:6px; align-items:center; padding:6px 8px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); }
     .slevels input{ transform: scale(1.05); }
 
+    details.chip{ flex:1 1 100%; }
+    details.chip > summary{
+      list-style:none; cursor:pointer; font-size:13px; color:var(--text);
+      user-select:none; padding:4px 0;
+    }
+    details.chip > summary::-webkit-details-marker{ display:none; }
+    .disp-grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap:12px 16px;
+      margin-top:12px;
+      padding-top:12px;
+      border-top:1px solid rgba(255,255,255,0.08);
+    }
+    .disp-item label{ margin-bottom:4px; }
+    .disp-item .inline{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .warn{ color:#ffb74d; font-size:11px; margin-top:6px; line-height:1.35; }
+
     /* D3 brush visuals */
     .selection{ fill: rgba(231,238,252,0.12); stroke: rgba(231,238,252,0.25); }
     .handle{ fill: rgba(231,238,252,0.25); }
@@ -57,7 +77,7 @@
   <div class="row">
     <div class="chip">
       <div>
-        <label>Файл данных</label>
+        <label>Файл данных (окно NOAA)</label>
         <select id="rangeSel">
           <option value="6-hour">6 часов</option>
           <option value="1-day">1 день</option>
@@ -83,17 +103,39 @@
       </div>
     </div>
 
-    <div class="chip">
-      <div>
-        <label>Период (локальное время устройства)</label>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <input id="startDt" type="datetime-local" />
-          <input id="endDt" type="datetime-local" />
+    <div class="chip" style="flex:1 1 320px;">
+      <div style="width:100%;">
+        <label>Период (локальное время устройства), до 50 лет назад от конца окна</label>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+          <div>
+            <span style="font-size:11px;color:var(--muted);">Пресет</span>
+            <select id="presetSel" style="min-width:160px;">
+              <option value="">— выберите —</option>
+              <option value="full">Весь загруженный файл</option>
+              <option value="6h">Последние 6 ч</option>
+              <option value="12h">Последние 12 ч</option>
+              <option value="24h">Последние 24 ч</option>
+              <option value="3d">Последние 3 дня</option>
+              <option value="7d">Последние 7 дней</option>
+              <option value="30d">Последние 30 дней</option>
+              <option value="90d">Последние 90 дней</option>
+              <option value="1y">Последний год</option>
+              <option value="5y">Последние 5 лет</option>
+              <option value="10y">Последние 10 лет</option>
+              <option value="25y">Последние 25 лет</option>
+              <option value="50y">Последние 50 лет</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+          <input id="startDt" type="datetime-local" title="Начало (не раньше данных и не дальше 50 лет от конца)" />
+          <input id="endDt" type="datetime-local" title="Конец" />
         </div>
         <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
           <button id="applyRangeBtn">Применить</button>
-          <button id="resetZoomBtn">Сброс</button>
+          <button id="resetZoomBtn">Сброс к файлу</button>
         </div>
+        <div class="warn" id="periodHint"></div>
       </div>
     </div>
 
@@ -117,6 +159,71 @@
         <div class="slevels" id="sLevelControls"></div>
       </div>
     </div>
+
+    <details class="chip" id="displayPanel">
+      <summary>Отображение графика — цвета, сетка, шкала Y, кривая, высота…</summary>
+      <div class="disp-grid">
+        <div class="disp-item">
+          <label>Цвет линии</label>
+          <div class="inline">
+            <input type="color" id="lineColor" value="#e7eefc" />
+            <input type="text" id="lineColorHex" class="mono" style="width:7em;font-size:12px;" maxlength="9" placeholder="#rrggbb" />
+          </div>
+        </div>
+        <div class="disp-item">
+          <label>Толщина линии <span id="lineWVal" class="mono">2.2</span></label>
+          <input type="range" id="lineWidth" min="0.8" max="6" step="0.1" value="2.2" />
+        </div>
+        <div class="disp-item">
+          <label>Кривая</label>
+          <select id="curveSel">
+            <option value="monotone" selected>Monotone X</option>
+            <option value="linear">Линейная</option>
+            <option value="step">Ступени</option>
+            <option value="basis">Сглаженная (basis)</option>
+          </select>
+        </div>
+        <div class="disp-item">
+          <label>Шкала Y</label>
+          <select id="yScaleSel">
+            <option value="log" selected>Логарифмическая</option>
+            <option value="linear">Линейная</option>
+          </select>
+        </div>
+        <div class="disp-item">
+          <label class="inline"><input type="checkbox" id="gridH" checked /> Горизонтальная сетка</label>
+        </div>
+        <div class="disp-item">
+          <label class="inline"><input type="checkbox" id="gridV" /> Вертикальная сетка</label>
+        </div>
+        <div class="disp-item">
+          <label>Прозрачность сетки <span id="gridOpVal" class="mono">0.08</span></label>
+          <input type="range" id="gridOpacity" min="0.02" max="0.22" step="0.01" value="0.08" />
+        </div>
+        <div class="disp-item">
+          <label>Число делений X (ориентир)</label>
+          <input type="range" id="xTicks" min="3" max="14" step="1" value="6" />
+          <span id="xTicksVal" class="mono">6</span>
+        </div>
+        <div class="disp-item">
+          <label>Высота SVG (px)</label>
+          <input type="range" id="chartHeight" min="320" max="900" step="20" value="560" />
+          <span id="chartHVal" class="mono">560</span>
+        </div>
+        <div class="disp-item">
+          <label class="inline"><input type="checkbox" id="showBands" checked /> Полосы S-уровней</label>
+        </div>
+        <div class="disp-item">
+          <label class="inline"><input type="checkbox" id="showThrLines" checked /> Линии порогов S</label>
+        </div>
+        <div class="disp-item">
+          <label class="inline"><input type="checkbox" id="showTooltip" checked /> Подсказка при наведении</label>
+        </div>
+        <div class="disp-item">
+          <label class="inline"><input type="checkbox" id="brushEnabled" checked /> Выделение на графике (brush zoom)</label>
+        </div>
+      </div>
+    </details>
   </div>
 
   <div class="status" id="status">Загрузка…</div>
@@ -129,20 +236,26 @@
 </div>
 
 <div class="hint">
-  Выделяй диапазон прямо на графике (drag) — это zoom по времени. Сброс — кнопка “Сброс”.<br/>
-  Источник: <span class="mono">https://services.swpc.noaa.gov/json/goes/primary/integral-protons-*.json</span><br/>
-  Y — логарифмическая шкала (pfu).
+  Выделяй диапазон прямо на графике (drag) — это zoom по времени (если включено в «Отображение»). Сброс — «Сброс к файлу».<br/>
+  Источник: <span class="mono">https://services.swpc.noaa.gov/json/goes/primary/integral-protons-*.json</span> — в файле только короткое «скользящее» окно (часы…дни), не архив за годы. Пресеты «год / 50 лет» ограничиваются <em>пересечением</em> с доступными точками и максимумом 50 лет.<br/>
+  Ось Y — по умолчанию логарифмическая (pfu).
 </div>
 
 <script>
 (() => {
+  const MS_DAY = 864e5;
+  const MS_YEAR = 365.25 * MS_DAY;
+  const MAX_SPAN_MS = 50 * MS_YEAR;
+
   const svg = d3.select("#chart");
   const statusEl = document.getElementById("status");
+  const periodHintEl = document.getElementById("periodHint");
 
   const rangeSel = document.getElementById("rangeSel");
   const energySel = document.getElementById("energySel");
   const refreshSel = document.getElementById("refreshSel");
   const reloadBtn = document.getElementById("reloadBtn");
+  const presetSel = document.getElementById("presetSel");
 
   const startDt = document.getElementById("startDt");
   const endDt = document.getElementById("endDt");
@@ -151,27 +264,46 @@
 
   const sLevelControls = document.getElementById("sLevelControls");
 
-  const W = 1080, H = 560;
-  const margin = {top: 18, right: 18, bottom: 54, left: 78};
-  const innerW = W - margin.left - margin.right;
-  const innerH = H - margin.top - margin.bottom;
+  const lineColor = document.getElementById("lineColor");
+  const lineColorHex = document.getElementById("lineColorHex");
+  const lineWidth = document.getElementById("lineWidth");
+  const lineWVal = document.getElementById("lineWVal");
+  const curveSel = document.getElementById("curveSel");
+  const yScaleSel = document.getElementById("yScaleSel");
+  const gridH = document.getElementById("gridH");
+  const gridV = document.getElementById("gridV");
+  const gridOpacity = document.getElementById("gridOpacity");
+  const gridOpVal = document.getElementById("gridOpVal");
+  const xTicks = document.getElementById("xTicks");
+  const xTicksVal = document.getElementById("xTicksVal");
+  const chartHeight = document.getElementById("chartHeight");
+  const chartHVal = document.getElementById("chartHVal");
+  const showBands = document.getElementById("showBands");
+  const showThrLines = document.getElementById("showThrLines");
+  const showTooltip = document.getElementById("showTooltip");
+  const brushEnabled = document.getElementById("brushEnabled");
+
+  let W = 1080, H = 560;
+  let margin = {top: 18, right: 18, bottom: 54, left: 78};
+  let innerW = W - margin.left - margin.right;
+  let innerH = H - margin.top - margin.bottom;
 
   const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-  const gBands = g.append("g");   // background S bands
+  const gBands = g.append("g");
   const gGrid  = g.append("g");
   const gAxes  = g.append("g");
-  const gThr   = g.append("g");   // S threshold lines
+  const gThr   = g.append("g");
   const gLine  = g.append("g");
-  const gOver  = g.append("g");   // tooltip
+  const gOver  = g.append("g");
   const gBrush = g.append("g");
 
   const x = d3.scaleUtc().range([0, innerW]);
-  const y = d3.scaleLog().range([innerH, 0]).clamp(true);
+  let yLog = d3.scaleLog().range([innerH, 0]).clamp(true);
+  let yLin = d3.scaleLinear().range([innerH, 0]).clamp(true);
 
   const fmtUtc = d3.utcFormat("%Y-%m-%d %H:%M UTC");
   const fmtNum = d3.format(".4~g");
 
-  // S-level thresholds for >=10 MeV
   const sLevels = [
     { id:"S1", thr:10,     next:100   },
     { id:"S2", thr:100,    next:1000  },
@@ -180,7 +312,6 @@
     { id:"S5", thr:100000, next:Infinity},
   ];
 
-  // fixed colors (легко менять)
   const sFill = {
     S1: "rgba(66, 165, 245, 0.14)",
     S2: "rgba(126, 87, 194, 0.14)",
@@ -198,15 +329,64 @@
 
   let timer = null;
 
-  // Global state
-  let fullSeries = [];          // filtered by energy, sorted
+  let fullSeries = [];
   let currentEnergy = ">=10 MeV";
-  let fullDomain = null;        // [tMin, tMax]
-  let currentDomain = null;     // [tMin, tMax]
+  let fullDomain = null;
+  let currentDomain = null;
   let sEnabled = { S1:true, S2:true, S3:true, S4:true, S5:true };
 
+  const LS_KEY = "goes-proton-d3-ui-v1";
+  function loadUiPrefs() {
+    try {
+      const j = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+      if (j.lineColor) { lineColor.value = j.lineColor; lineColorHex.value = j.lineColor; }
+      if (j.lineWidth != null) { lineWidth.value = j.lineWidth; lineWVal.textContent = String(j.lineWidth); }
+      if (j.curve) curveSel.value = j.curve;
+      if (j.yScale) yScaleSel.value = j.yScale;
+      if (j.gridH != null) gridH.checked = j.gridH;
+      if (j.gridV != null) gridV.checked = j.gridV;
+      if (j.gridOpacity != null) { gridOpacity.value = j.gridOpacity; gridOpVal.textContent = j.gridOpacity; }
+      if (j.xTicks != null) { xTicks.value = j.xTicks; xTicksVal.textContent = j.xTicks; }
+      if (j.chartHeight != null) { chartHeight.value = j.chartHeight; chartHVal.textContent = j.chartHeight; applySvgSize(); }
+      if (j.showBands != null) showBands.checked = j.showBands;
+      if (j.showThrLines != null) showThrLines.checked = j.showThrLines;
+      if (j.showTooltip != null) showTooltip.checked = j.showTooltip;
+      if (j.brushEnabled != null) brushEnabled.checked = j.brushEnabled;
+      if (j.displayOpen) document.getElementById("displayPanel").open = true;
+    } catch (_) {}
+  }
+  function saveUiPrefs() {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        lineColor: lineColor.value,
+        lineWidth: +lineWidth.value,
+        curve: curveSel.value,
+        yScale: yScaleSel.value,
+        gridH: gridH.checked,
+        gridV: gridV.checked,
+        gridOpacity: +gridOpacity.value,
+        xTicks: +xTicks.value,
+        chartHeight: +chartHeight.value,
+        showBands: showBands.checked,
+        showThrLines: showThrLines.checked,
+        showTooltip: showTooltip.checked,
+        brushEnabled: brushEnabled.checked,
+        displayOpen: document.getElementById("displayPanel").open,
+      }));
+    } catch (_) {}
+  }
+
+  function applySvgSize() {
+    H = +chartHeight.value;
+    chartHVal.textContent = String(H);
+    innerH = H - margin.top - margin.bottom;
+    yLog.range([innerH, 0]);
+    yLin.range([innerH, 0]);
+    x.range([0, innerW]);
+    svg.attr("viewBox", `0 0 ${W} ${H}`);
+  }
+
   function urlFor(range) {
-    // cache-buster чтобы Safari/прокси не держали старое
     return `https://services.swpc.noaa.gov/json/goes/primary/integral-protons-${range}.json?_=${Date.now()}`;
   }
 
@@ -228,30 +408,53 @@
       .sort((a,b) => a.t - b.t);
   }
 
-  function clampDomainToFull(domain) {
+  /** Ограничение: внутри fullDomain и длина окна ≤ 50 лет */
+  function clampDomainToDataAndMaxSpan(domain) {
     if (!fullDomain) return domain;
-    const [a,b] = domain;
-    const [fa,fb] = fullDomain;
-    const aa = new Date(Math.max(+a, +fa));
-    const bb = new Date(Math.min(+b, +fb));
+    let [a, b] = domain;
+    const [fa, fb] = fullDomain;
+    if (+a >= +b) return [fa, fb];
+
+    let aa = new Date(Math.max(+a, +fa));
+    let bb = new Date(Math.min(+b, +fb));
+    if (+aa >= +bb) return [fa, fb];
+
+    if (+bb - +aa > MAX_SPAN_MS) {
+      aa = new Date(+bb - MAX_SPAN_MS);
+      if (+aa < +fa) aa = new Date(+fa);
+    }
     if (+aa >= +bb) return [fa, fb];
     return [aa, bb];
   }
 
+  function toLocalInput(d) {
+    const pad = n => String(n).padStart(2,"0");
+    const yy = d.getFullYear();
+    const mm = pad(d.getMonth()+1);
+    const dd = pad(d.getDate());
+    const hh = pad(d.getHours());
+    const mi = pad(d.getMinutes());
+    return `${yy}-${mm}-${dd}T${hh}:${mi}`;
+  }
+
   function setInputsFromDomain(domain) {
-    // datetime-local expects local time string without timezone suffix
-    const toLocalInput = (d) => {
-      const pad = n => String(n).padStart(2,"0");
-      const yy = d.getFullYear();
-      const mm = pad(d.getMonth()+1);
-      const dd = pad(d.getDate());
-      const hh = pad(d.getHours());
-      const mi = pad(d.getMinutes());
-      return `${yy}-${mm}-${dd}T${hh}:${mi}`;
-    };
-    // domain is UTC Date objects, but Date in JS is absolute; getHours() gives local — OK for inputs
     startDt.value = toLocalInput(domain[0]);
     endDt.value   = toLocalInput(domain[1]);
+    updateInputBounds();
+  }
+
+  function updateInputBounds() {
+    if (!fullDomain) {
+      startDt.removeAttribute("min"); startDt.removeAttribute("max");
+      endDt.removeAttribute("min"); endDt.removeAttribute("max");
+      return;
+    }
+    const [fa, fb] = fullDomain;
+    const minStart = new Date(Math.max(+fa, +fb - MAX_SPAN_MS));
+    startDt.min = toLocalInput(fa);
+    startDt.max = toLocalInput(fb);
+    endDt.min = toLocalInput(minStart);
+    endDt.max = toLocalInput(fb);
   }
 
   function getDomainFromInputs() {
@@ -262,20 +465,71 @@
     return [a,b];
   }
 
+  const presetMs = {
+    full: null,
+    "6h": 6 * 3600e3,
+    "12h": 12 * 3600e3,
+    "24h": 24 * 3600e3,
+    "3d": 3 * MS_DAY,
+    "7d": 7 * MS_DAY,
+    "30d": 30 * MS_DAY,
+    "90d": 90 * MS_DAY,
+    "1y": MS_YEAR,
+    "5y": 5 * MS_YEAR,
+    "10y": 10 * MS_YEAR,
+    "25y": 25 * MS_YEAR,
+    "50y": 50 * MS_YEAR,
+  };
+
+  function applyPreset(key) {
+    if (!fullDomain || !key) return;
+    const [fa, fb] = fullDomain;
+    let dom;
+    if (key === "full") {
+      dom = [fa, fb];
+    } else {
+      const ms = presetMs[key];
+      const end = fb;
+      let start = new Date(+end - ms);
+      if (+start < +fa) start = new Date(+fa);
+      dom = clampDomainToDataAndMaxSpan([start, end]);
+    }
+    currentDomain = dom;
+    setInputsFromDomain(currentDomain);
+    render();
+  }
+
+  function updatePeriodHint() {
+    if (!fullDomain) {
+      periodHintEl.textContent = "";
+      return;
+    }
+    const spanFile = fullDomain[1] - fullDomain[0];
+    const spanView = currentDomain ? (currentDomain[1] - currentDomain[0]) : 0;
+    const parts = [];
+    parts.push(`В файле NOAA: ~${(spanFile / MS_DAY).toFixed(2)} сут. данных (${fmtUtc(fullDomain[0]).slice(0,16)}…).`);
+    if (currentDomain && spanView < spanFile * 0.999) {
+      parts.push(`На графике: ~${(spanView / MS_DAY).toFixed(2)} сут.`);
+    }
+    if (spanView > MAX_SPAN_MS * 0.99) {
+      parts.push("Достигнут лимит 50 лет по оси X.");
+    }
+    periodHintEl.textContent = parts.join(" ");
+  }
+
   function buildSControls() {
     sLevelControls.innerHTML = "";
     sLevels.forEach(lv => {
       const wrap = document.createElement("div");
       wrap.className = "sbox";
-      wrap.style.borderColor = "rgba(255,255,255,0.10)";
-      wrap.style.background = "rgba(255,255,255,0.03)";
 
       const cb = document.createElement("input");
       cb.type = "checkbox";
       cb.checked = !!sEnabled[lv.id];
       cb.addEventListener("change", () => {
         sEnabled[lv.id] = cb.checked;
-        render(); // just redraw
+        render();
+        saveUiPrefs();
       });
 
       const lab = document.createElement("span");
@@ -299,23 +553,18 @@
   }
 
   function computeSIntervals(series) {
-    // returns {S1:[{a,b}], S2:[...], ...} for >=10 MeV only
     const out = { S1:[], S2:[], S3:[], S4:[], S5:[] };
     if (!series.length) return out;
-
-    // helper: determine level id for value
     const levelOf = (v) => {
       for (let i=sLevels.length-1; i>=0; i--) {
         if (v >= sLevels[i].thr) return sLevels[i].id;
       }
       return null;
     };
-
-    let cur = null; // {id, start}
+    let cur = null;
     for (let i=0; i<series.length; i++) {
       const d = series[i];
       const id = levelOf(d.v);
-
       if (!id) {
         if (cur) {
           out[cur.id].push({a: cur.start, b: series[i-1].t});
@@ -323,11 +572,8 @@
         }
         continue;
       }
-
-      if (!cur) {
-        cur = { id, start: d.t };
-      } else if (cur.id !== id) {
-        // close previous at previous point time
+      if (!cur) cur = { id, start: d.t };
+      else if (cur.id !== id) {
         out[cur.id].push({a: cur.start, b: series[i-1].t});
         cur = { id, start: d.t };
       }
@@ -336,8 +582,28 @@
     return out;
   }
 
+  function curveFn() {
+    const m = {
+      monotone: d3.curveMonotoneX,
+      linear: d3.curveLinear,
+      step: d3.curveStepAfter,
+      basis: d3.curveBasis,
+    };
+    return m[curveSel.value] || d3.curveMonotoneX;
+  }
+
+  function activeYScale() {
+    return yScaleSel.value === "linear" ? yLin : yLog;
+  }
+
+  function xTickFormat(spanMs) {
+    if (spanMs > 400 * MS_DAY) return d3.utcFormat("%Y");
+    if (spanMs > 120 * MS_DAY) return d3.utcFormat("%Y-%m");
+    if (spanMs > 2 * MS_DAY) return d3.utcFormat("%m-%d");
+    return d3.utcFormat("%m-%d %H:%M");
+  }
+
   function render() {
-    // Clean layers
     gBands.selectAll("*").remove();
     gGrid.selectAll("*").remove();
     gAxes.selectAll("*").remove();
@@ -345,6 +611,9 @@
     gLine.selectAll("*").remove();
     gOver.selectAll("*").remove();
     gBrush.selectAll("*").remove();
+
+    applySvgSize();
+    updatePeriodHint();
 
     if (!fullSeries.length || !currentDomain) {
       statusEl.textContent = "Нет данных (или выбранный канал пуст).";
@@ -357,24 +626,32 @@
       return;
     }
 
-    // Scales
     x.domain(currentDomain);
+    const spanMs = +currentDomain[1] - +currentDomain[0];
 
     const vMin = d3.min(series, d => d.v);
     const vMax = d3.max(series, d => d.v);
-    const yMin = Math.max(1e-3, vMin * 0.8);
-    const yMax = Math.max(1, vMax * 1.2);
-    y.domain([yMin, yMax]);
+    const y = activeYScale();
+    if (yScaleSel.value === "log") {
+      const yMin = Math.max(1e-3, vMin * 0.8);
+      const yMax = Math.max(1, vMax * 1.2);
+      yLog.domain([yMin, yMax]);
+    } else {
+      const pad = Math.max(vMax * 0.05, 1e-6);
+      yLin.domain([Math.max(0, vMin - pad), vMax + pad]);
+    }
 
-    // Background S bands (only for >=10 MeV)
-    if (currentEnergy === ">=10 MeV") {
+    const yDom = y.domain();
+    const go = +gridOpacity.value;
+    const gridStroke = `rgba(255,255,255,${go})`;
+
+    if (currentEnergy === ">=10 MeV" && showBands.checked) {
       const intervals = computeSIntervals(series);
       const bandData = [];
       Object.keys(intervals).forEach(id => {
         if (!sEnabled[id]) return;
         intervals[id].forEach(seg => bandData.push({id, a: seg.a, b: seg.b}));
       });
-
       gBands.selectAll("rect.band")
         .data(bandData)
         .enter().append("rect")
@@ -388,18 +665,34 @@
         .attr("stroke-width", 1);
     }
 
-    // Grid
-    const yTicks = y.ticks(9).filter(t => t > 0);
-    gGrid.selectAll("line.h").data(yTicks).enter()
-      .append("line")
-      .attr("class","h")
-      .attr("x1",0).attr("x2",innerW)
-      .attr("y1",d=>y(d)).attr("y2",d=>y(d))
-      .attr("stroke","rgba(255,255,255,0.08)")
-      .attr("stroke-width",1);
+    const yTicks = yScaleSel.value === "log"
+      ? y.ticks(9).filter(t => t > 0)
+      : y.ticks(9);
 
-    // Axes
-    const xAxis = d3.axisBottom(x).ticks(6).tickFormat(d3.utcFormat("%m-%d %H:%M"));
+    if (gridH.checked) {
+      gGrid.selectAll("line.h").data(yTicks).enter()
+        .append("line")
+        .attr("class","h")
+        .attr("x1",0).attr("x2",innerW)
+        .attr("y1",d=>y(d)).attr("y2",d=>y(d))
+        .attr("stroke", gridStroke)
+        .attr("stroke-width",1);
+    }
+
+    if (gridV.checked) {
+      const xt = x.ticks(+xTicks.value);
+      gGrid.selectAll("line.v").data(xt).enter()
+        .append("line")
+        .attr("class","v")
+        .attr("y1",0).attr("y2",innerH)
+        .attr("x1",d=>x(d)).attr("x2",d=>x(d))
+        .attr("stroke", gridStroke)
+        .attr("stroke-width",1)
+        .attr("stroke-dasharray","4,6");
+    }
+
+    const tickN = +xTicks.value;
+    const xAxis = d3.axisBottom(x).ticks(tickN).tickFormat(xTickFormat(spanMs));
     const yAxis = d3.axisLeft(y).ticks(9, "~g");
 
     gAxes.append("g")
@@ -413,11 +706,10 @@
       .call(s => s.selectAll("text").attr("fill","rgba(231,238,252,0.85)"))
       .call(s => s.selectAll("path,line").attr("stroke","rgba(255,255,255,0.25)"));
 
-    // Threshold lines (only for >=10 MeV)
-    if (currentEnergy === ">=10 MeV") {
+    if (currentEnergy === ">=10 MeV" && showThrLines.checked) {
       const thr = sLevels
         .map(d => ({name:d.id, v:d.thr}))
-        .filter(d => d.v >= y.domain()[0] && d.v <= y.domain()[1]);
+        .filter(d => d.v >= yDom[0] && d.v <= yDom[1]);
 
       const thrG = gThr.selectAll("g.thr").data(thr).enter().append("g").attr("class","thr");
       thrG.append("line")
@@ -435,20 +727,19 @@
         .text(d => `${d.name}: ${d.v} pfu`);
     }
 
-    // Line
+    const strokeCol = lineColor.value || "#e7eefc";
     const line = d3.line()
       .x(d => x(d.t))
       .y(d => y(d.v))
-      .curve(d3.curveMonotoneX);
+      .curve(curveFn());
 
     gLine.append("path")
       .datum(series)
       .attr("fill","none")
-      .attr("stroke","rgba(231,238,252,0.95)")
-      .attr("stroke-width", 2.2)
+      .attr("stroke", strokeCol)
+      .attr("stroke-width", +lineWidth.value)
       .attr("d", line);
 
-    // Tooltip
     const overlay = gOver.append("rect")
       .attr("x",0).attr("y",0).attr("width",innerW).attr("height",innerH)
       .attr("fill","transparent");
@@ -502,33 +793,36 @@
       tipBox.select("rect").attr("width", w).attr("height", h);
     }
 
-    overlay
-      .on("pointerenter", () => tip.style("display", null))
-      .on("pointermove", showTip)
-      .on("pointerleave", () => tip.style("display","none"));
+    if (showTooltip.checked) {
+      overlay
+        .on("pointerenter", () => tip.style("display", null))
+        .on("pointermove", showTip)
+        .on("pointerleave", () => tip.style("display","none"));
+    }
 
-    // Brush (time selection)
-    const brush = d3.brushX()
-      .extent([[0,0],[innerW,innerH]])
-      .on("end", (event) => {
-        if (!event.selection) return;
-        const [sx0, sx1] = event.selection;
-        const d0 = x.invert(sx0);
-        const d1 = x.invert(sx1);
-        currentDomain = clampDomainToFull([d0, d1]);
-        setInputsFromDomain(currentDomain);
-        render(); // redraw with new domain
-      });
+    if (brushEnabled.checked) {
+      const brush = d3.brushX()
+        .extent([[0,0],[innerW,innerH]])
+        .on("end", (event) => {
+          if (!event.selection) return;
+          const [sx0, sx1] = event.selection;
+          const d0 = x.invert(sx0);
+          const d1 = x.invert(sx1);
+          currentDomain = clampDomainToDataAndMaxSpan([d0, d1]);
+          setInputsFromDomain(currentDomain);
+          presetSel.value = "";
+          render();
+        });
+      gBrush.call(brush);
+    }
 
-    gBrush.call(brush);
-
-    // Status
     const tMin = series[0].t;
     const tMax = series[series.length-1].t;
     const last = series[series.length-1];
+    const yLabel = yScaleSel.value === "log" ? "log" : "linear";
 
     statusEl.innerHTML =
-      `Канал: <span class="mono">${currentEnergy}</span>, точек в окне: <span class="mono">${series.length}</span><br>` +
+      `Канал: <span class="mono">${currentEnergy}</span>, точек в окне: <span class="mono">${series.length}</span>, Y: <span class="mono">${yLabel}</span><br>` +
       `Окно: <span class="mono">${fmtUtc(tMin)}</span> → <span class="mono">${fmtUtc(tMax)}</span><br>` +
       `Последнее: <span class="mono">${fmtNum(last.v)} pfu</span> @ <span class="mono">${fmtUtc(last.t)}</span>` +
       (currentEnergy === ">=10 MeV" ? ` (${levelLabel(last.v).trim()})` : "");
@@ -557,16 +851,13 @@
 
       fullDomain = d3.extent(fullSeries, d => d.t);
 
-      // First load: set full domain + inputs
-      // Next loads: keep current domain but clamp to new full domain (if file window slid)
       if (!currentDomain) {
         currentDomain = fullDomain;
       } else {
-        currentDomain = clampDomainToFull(currentDomain);
+        currentDomain = clampDomainToDataAndMaxSpan(currentDomain);
       }
       setInputsFromDomain(currentDomain);
 
-      // Enable/disable S controls depending on energy
       sLevelControls.style.opacity = (currentEnergy === ">=10 MeV") ? "1" : "0.45";
       Array.from(sLevelControls.querySelectorAll("input[type=checkbox]"))
         .forEach(cb => cb.disabled = (currentEnergy !== ">=10 MeV"));
@@ -583,12 +874,30 @@
     if (s > 0) timer = setInterval(loadData, s * 1000);
   }
 
-  // UI bindings
-  rangeSel.addEventListener("change", () => { currentDomain = null; loadData(); });
-  energySel.addEventListener("change", () => { currentDomain = null; loadData(); });
+  function syncColorFromPicker() {
+    lineColorHex.value = lineColor.value;
+    saveUiPrefs();
+    render();
+  }
+  function syncColorFromHex() {
+    const v = lineColorHex.value.trim();
+    if (/^#[0-9A-Fa-f]{6}$/.test(v)) lineColor.value = v;
+    saveUiPrefs();
+    render();
+  }
+
+  rangeSel.addEventListener("change", () => { currentDomain = null; presetSel.value = ""; loadData(); });
+  energySel.addEventListener("change", () => { currentDomain = null; presetSel.value = ""; loadData(); });
 
   refreshSel.addEventListener("change", () => { scheduleRefresh(); loadData(); });
   reloadBtn.addEventListener("click", loadData);
+
+  presetSel.addEventListener("change", () => {
+    const k = presetSel.value;
+    if (!k) return;
+    applyPreset(k);
+    presetSel.value = "";
+  });
 
   applyRangeBtn.addEventListener("click", () => {
     if (!fullDomain) return;
@@ -597,9 +906,10 @@
       statusEl.textContent = "Неверный период: проверь start/end (start должен быть меньше end).";
       return;
     }
-    currentDomain = clampDomainToFull(dom);
+    currentDomain = clampDomainToDataAndMaxSpan(dom);
     setInputsFromDomain(currentDomain);
     render();
+    saveUiPrefs();
   });
 
   resetZoomBtn.addEventListener("click", () => {
@@ -607,10 +917,27 @@
     currentDomain = fullDomain;
     setInputsFromDomain(currentDomain);
     render();
+    saveUiPrefs();
   });
 
-  // init
+  [
+    lineColor, lineWidth, curveSel, yScaleSel, gridH, gridV, gridOpacity, xTicks,
+    chartHeight, showBands, showThrLines, showTooltip, brushEnabled,
+  ].forEach(el => el.addEventListener("input", () => {
+    lineWVal.textContent = lineWidth.value;
+    gridOpVal.textContent = gridOpacity.value;
+    xTicksVal.textContent = xTicks.value;
+    chartHVal.textContent = chartHeight.value;
+    saveUiPrefs();
+    render();
+  }));
+  lineColor.addEventListener("change", syncColorFromPicker);
+  lineColorHex.addEventListener("change", syncColorFromHex);
+
+  document.getElementById("displayPanel").addEventListener("toggle", saveUiPrefs);
+
   buildSControls();
+  loadUiPrefs();
   scheduleRefresh();
   loadData();
 })();
