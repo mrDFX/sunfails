@@ -22,10 +22,18 @@
       border-radius:12px; padding:10px 12px; display:flex; gap:10px; align-items:center;
     }
     label{ font-size:12px; color:var(--muted); display:block; margin-bottom:6px; }
-    select, button, input{
+    /* Не трогаем appearance у <select>: в Safari/WebKit appearance:none ломает выбор и событие change */
+    button, input{
       appearance:none; border-radius:10px; border:1px solid rgba(255,255,255,0.10);
       background:rgba(255,255,255,0.06); color:var(--text);
       padding:10px 12px; font-size:14px;
+    }
+    select{
+      border-radius:10px; border:1px solid rgba(255,255,255,0.10);
+      background:rgba(255,255,255,0.06); color:var(--text);
+      padding:10px 12px; font-size:14px;
+      appearance:auto;
+      -webkit-appearance:menulist-button;
     }
     input[type="datetime-local"]{ min-width: 220px; }
     input[type="color"]{ width:44px; height:40px; padding:4px; cursor:pointer; }
@@ -334,6 +342,8 @@
   let fullDomain = null;
   let currentDomain = null;
   let sEnabled = { S1:true, S2:true, S3:true, S4:true, S5:true };
+  /** Одноразовая строка под статусом после успешного пресета */
+  let statusPresetNote = "";
 
   const LS_KEY = "goes-proton-d3-ui-v1";
   function loadUiPrefs() {
@@ -481,14 +491,26 @@
     "50y": 50 * MS_YEAR,
   };
 
+  const presetLabels = {
+    full: "весь файл",
+    "6h": "6 ч", "12h": "12 ч", "24h": "24 ч",
+    "3d": "3 дня", "7d": "7 дней", "30d": "30 дней", "90d": "90 дней",
+    "1y": "1 год", "5y": "5 лет", "10y": "10 лет", "25y": "25 лет", "50y": "50 лет",
+  };
+
   function applyPreset(key) {
-    if (!fullDomain || !key) return;
+    if (!key) return false;
+    if (!fullDomain) {
+      statusEl.textContent = "Пресет не применён: данные ещё не загружены (или ошибка сети). Подождите или нажмите «Обновить».";
+      return false;
+    }
     const [fa, fb] = fullDomain;
     let dom;
     if (key === "full") {
       dom = [fa, fb];
     } else {
       const ms = presetMs[key];
+      if (ms == null) return false;
       const end = fb;
       let start = new Date(+end - ms);
       if (+start < +fa) start = new Date(+fa);
@@ -496,7 +518,10 @@
     }
     currentDomain = dom;
     setInputsFromDomain(currentDomain);
+    statusPresetNote = `Пресет «${presetLabels[key] || key}» применён.`;
     render();
+    saveUiPrefs();
+    return true;
   }
 
   function updatePeriodHint() {
@@ -616,12 +641,14 @@
     updatePeriodHint();
 
     if (!fullSeries.length || !currentDomain) {
+      statusPresetNote = "";
       statusEl.textContent = "Нет данных (или выбранный канал пуст).";
       return;
     }
 
     const series = fullSeries.filter(d => d.t >= currentDomain[0] && d.t <= currentDomain[1]);
     if (!series.length) {
+      statusPresetNote = "";
       statusEl.textContent = "В выбранном диапазоне времени нет точек.";
       return;
     }
@@ -821,11 +848,17 @@
     const last = series[series.length-1];
     const yLabel = yScaleSel.value === "log" ? "log" : "linear";
 
+    const note = statusPresetNote
+      ? `<br><span style="color:rgba(159,176,208,0.95);">${statusPresetNote}</span>`
+      : "";
+    statusPresetNote = "";
+
     statusEl.innerHTML =
       `Канал: <span class="mono">${currentEnergy}</span>, точек в окне: <span class="mono">${series.length}</span>, Y: <span class="mono">${yLabel}</span><br>` +
       `Окно: <span class="mono">${fmtUtc(tMin)}</span> → <span class="mono">${fmtUtc(tMax)}</span><br>` +
       `Последнее: <span class="mono">${fmtNum(last.v)} pfu</span> @ <span class="mono">${fmtUtc(last.t)}</span>` +
-      (currentEnergy === ">=10 MeV" ? ` (${levelLabel(last.v).trim()})` : "");
+      (currentEnergy === ">=10 MeV" ? ` (${levelLabel(last.v).trim()})` : "") +
+      note;
   }
 
   async function loadData() {
@@ -892,12 +925,22 @@
   refreshSel.addEventListener("change", () => { scheduleRefresh(); loadData(); });
   reloadBtn.addEventListener("click", loadData);
 
-  presetSel.addEventListener("change", () => {
+  let presetEventGuard = null;
+  function onPresetUserInput() {
     const k = presetSel.value;
     if (!k) return;
+    /* change + input подряд — не применяем пресет дважды */
+    if (presetEventGuard === k) return;
+    presetEventGuard = k;
     applyPreset(k);
-    presetSel.value = "";
-  });
+    /* Сброс placeholder после тика: синхронный value="" в обработчике change иногда ломает WebKit */
+    setTimeout(() => {
+      presetSel.value = "";
+      presetEventGuard = null;
+    }, 0);
+  }
+  presetSel.addEventListener("change", onPresetUserInput);
+  presetSel.addEventListener("input", onPresetUserInput);
 
   applyRangeBtn.addEventListener("click", () => {
     if (!fullDomain) return;
