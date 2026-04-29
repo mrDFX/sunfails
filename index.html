@@ -1,917 +1,671 @@
 <!doctype html>
-<html lang="ru">
+<html>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>GOES Data Explorer — NOAA/SWPC</title>
-  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
-  <style>
-    :root{
-      --bg:#0b0f17;--panel:#11182a;--panel2:#161f35;--text:#e7eefc;--muted:#9fb0d0;
-      --accent:#4a9eff;--stroke:rgba(231,238,252,0.95);
-      --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.12);
-      --hover:rgba(255,255,255,0.06);--axis:rgba(255,255,255,0.25);
-    }
-    [data-theme="light"]{
-      --bg:#f5f7fa;--panel:#ffffff;--panel2:#f0f2f5;--text:#1a1a2e;--muted:#6b7280;
-      --accent:#3b82f6;--stroke:rgba(26,26,46,0.90);
-      --border:rgba(0,0,0,0.10);--border2:rgba(0,0,0,0.15);
-      --hover:rgba(0,0,0,0.04);--axis:rgba(0,0,0,0.25);
-    }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif;background:var(--bg);color:var(--text);transition:background .3s,color .3s}
-    header{padding:14px 14px 6px;max-width:1440px;margin:0 auto}
-    .title-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-    h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.2px}
-    .theme-btn{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:5px 11px;cursor:pointer;font-size:16px;color:var(--text);transition:all .2s}
-    .theme-btn:hover{background:var(--hover)}
-    .row{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin-bottom:8px}
-    .chip{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:9px 11px;display:flex;gap:8px;align-items:center;transition:background .3s}
-    label{font-size:10.5px;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
-    select,button,input{appearance:none;border-radius:8px;border:1px solid var(--border2);background:var(--hover);color:var(--text);padding:7px 10px;font-size:13px;font-family:inherit;transition:all .2s}
-    select:focus,input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(74,158,255,0.15)}
-    button{cursor:pointer;font-weight:500}
-    button:hover{background:rgba(74,158,255,0.15);border-color:var(--accent)}
-    .period-group{display:flex;flex-wrap:wrap;gap:3px}
-    .pbtn{padding:5px 9px;border-radius:7px;font-size:11.5px;font-weight:600;border:1px solid var(--border2);background:var(--hover);color:var(--text);cursor:pointer;transition:all .12s;min-width:32px;text-align:center;line-height:1.3}
-    .pbtn:hover{background:rgba(74,158,255,0.12);border-color:var(--accent)}
-    .pbtn.active{background:rgba(74,158,255,0.22);border-color:var(--accent);color:var(--accent)}
-    .pbtn.disabled{opacity:.25;pointer-events:none}
-    .pbtn.nf{opacity:.45}.pbtn.nf.hd{opacity:1}
-    .pbtn.nf::after{content:"↑";font-size:7px;vertical-align:super;margin-left:1px}
-    .pbtn.nf.hd::after{content:""}
-    details{background:var(--panel);border:1px solid var(--border);border-radius:12px;transition:background .3s}
-    details summary{padding:9px 13px;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted);user-select:none;list-style:none}
-    details summary::-webkit-details-marker{display:none}
-    details summary::before{content:"▸ "}
-    details[open] summary::before{content:"▾ "}
-    .panel-body{padding:2px 13px 13px}
-    .sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:10px}
-    .si label{margin-bottom:3px}
-    .si input[type="range"]{width:100%;padding:3px 0;background:transparent;border:none}
-    .si input[type="color"]{width:38px;height:28px;padding:2px;border-radius:6px}
-    .sr{display:flex;gap:7px;align-items:center}
-    .drop-zone{border:2px dashed var(--border2);border-radius:12px;padding:16px;text-align:center;color:var(--muted);font-size:13px;transition:all .2s;cursor:pointer;margin-top:6px}
-    .drop-zone:hover,.drop-zone.dragover{border-color:var(--accent);background:rgba(74,158,255,0.06)}
-    .drop-zone input[type="file"]{display:none}
-    .slevels{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-    .sbox{display:flex;gap:4px;align-items:center;padding:4px 7px;border-radius:7px;border:1px solid var(--border);background:var(--hover);font-size:11px;color:var(--muted)}
-    .sbox input{transform:scale(1.05)}
-    .status{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.4}
-    .wrap{padding:0 14px 8px;max-width:1440px;margin:0 auto}
-    .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:8px;overflow:hidden;transition:background .3s}
-    svg{width:100%;height:auto;display:block}
-    .toolbar{display:flex;gap:6px;flex-wrap:wrap;padding:4px 14px 6px;max-width:1440px;margin:0 auto;align-items:center}
-    .toolbar button{font-size:11px;padding:5px 10px}
-    .hint{font-size:11.5px;color:var(--muted);padding:4px 14px 18px;max-width:1440px;margin:0 auto;line-height:1.5}
-    .hint a{color:var(--accent)}
-    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
-    .badge{display:inline-block;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.3px}
-    .badge.live{background:rgba(52,211,153,0.2);color:#34d399}
-    .badge.file{background:rgba(251,191,36,0.2);color:#fbbf24}
-    .selection{fill:rgba(74,158,255,0.12);stroke:rgba(74,158,255,0.30)}
-    .handle{fill:rgba(74,158,255,0.30)}
-    @media(max-width:640px){.sgrid{grid-template-columns:1fr}input[type="date"]{min-width:120px}}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>GOES Data Explorer — NOAA/SWPC</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<style>
+:root{--bg:#0b0f17;--panel:#11182a;--text:#e7eefc;--muted:#9fb0d0;--accent:#4a9eff;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.12);--hover:rgba(255,255,255,0.06);--axis:rgba(255,255,255,0.25)}
+[data-theme="light"]{--bg:#f5f7fa;--panel:#fff;--text:#1a1a2e;--muted:#6b7280;--accent:#3b82f6;--border:rgba(0,0,0,0.10);--border2:rgba(0,0,0,0.15);--hover:rgba(0,0,0,0.04);--axis:rgba(0,0,0,0.25)}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif;background:var(--bg);color:var(--text);transition:background .3s,color .3s}
+header{padding:14px 14px 6px;max-width:1440px;margin:0 auto}
+.title-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.2px}
+.tbtn{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:5px 11px;cursor:pointer;font-size:16px;color:var(--text);transition:all .2s}
+.tbtn:hover{background:var(--hover)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin-bottom:8px}
+.chip{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:9px 11px;display:flex;gap:8px;align-items:center;transition:background .3s}
+label{font-size:10.5px;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+select,button,input{appearance:none;border-radius:8px;border:1px solid var(--border2);background:var(--hover);color:var(--text);padding:7px 10px;font-size:13px;font-family:inherit;transition:all .2s}
+select:focus,input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(74,158,255,0.15)}
+button{cursor:pointer;font-weight:500}button:hover{background:rgba(74,158,255,0.15);border-color:var(--accent)}
+.period-group{display:flex;flex-wrap:wrap;gap:3px}
+.pbtn{padding:5px 9px;border-radius:7px;font-size:11.5px;font-weight:600;border:1px solid var(--border2);background:var(--hover);color:var(--text);cursor:pointer;transition:all .12s;min-width:32px;text-align:center;line-height:1.3}
+.pbtn:hover{background:rgba(74,158,255,0.12);border-color:var(--accent)}
+.pbtn.active{background:rgba(74,158,255,0.22);border-color:var(--accent);color:var(--accent)}
+.pbtn.disabled{opacity:.25;pointer-events:none}
+.pbtn.nf{opacity:.45}.pbtn.nf.hd{opacity:1}
+.pbtn.nf::after{content:"↑";font-size:7px;vertical-align:super;margin-left:1px}.pbtn.nf.hd::after{content:""}
+details{background:var(--panel);border:1px solid var(--border);border-radius:12px;transition:background .3s}
+details summary{padding:9px 13px;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted);user-select:none;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"▸ "}details[open] summary::before{content:"▾ "}
+.panel-body{padding:2px 13px 13px}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:10px}
+.si label{margin-bottom:3px}.si input[type="range"]{width:100%;padding:3px 0;background:transparent;border:none}
+.si input[type="color"]{width:38px;height:28px;padding:2px;border-radius:6px}
+.sr{display:flex;gap:7px;align-items:center}
+.drop-zone{border:2px dashed var(--border2);border-radius:12px;padding:16px;text-align:center;color:var(--muted);font-size:13px;transition:all .2s;cursor:pointer;margin-top:6px}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--accent);background:rgba(74,158,255,0.06)}
+.drop-zone input[type="file"]{display:none}
+.slevels{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sbox{display:flex;gap:4px;align-items:center;padding:4px 7px;border-radius:7px;border:1px solid var(--border);background:var(--hover);font-size:11px;color:var(--muted)}
+.sbox input{transform:scale(1.05)}
+.status{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.4}
+.wrap{padding:0 14px 8px;max-width:1440px;margin:0 auto}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:8px;overflow:hidden;transition:background .3s}
+svg{width:100%;height:auto;display:block}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;padding:4px 14px 6px;max-width:1440px;margin:0 auto;align-items:center}
+.toolbar button{font-size:11px;padding:5px 10px}
+.hint{font-size:11.5px;color:var(--muted);padding:4px 14px 18px;max-width:1440px;margin:0 auto;line-height:1.5}
+.hint a{color:var(--accent)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+.badge{display:inline-block;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.3px}
+.badge.live{background:rgba(52,211,153,0.2);color:#34d399}
+.badge.file{background:rgba(251,191,36,0.2);color:#fbbf24}
+.selection{fill:rgba(74,158,255,0.12);stroke:rgba(74,158,255,0.30)}.handle{fill:rgba(74,158,255,0.30)}
+.bio-tbl{width:100%;border-collapse:collapse;font-size:11px;line-height:1.35}
+.bio-tbl th{text-align:left;padding:5px 6px;border-bottom:1px solid var(--border2);color:var(--muted);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.4px}
+.bio-tbl td{padding:5px 6px;border-bottom:1px solid var(--border);vertical-align:top}
+.bio-tbl tr:last-child td{border-bottom:none}
+.bio-tbl tbody tr{transition:background .15s;cursor:default}
+.bio-tbl tbody tr:hover{background:rgba(74,158,255,0.08)}
+.bio-dot{display:inline-block;width:9px;height:9px;border-radius:9px;margin-right:3px;vertical-align:middle}
+.bio-sev{font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.3px}
+.bio-none{color:var(--muted);font-style:italic;padding:8px 0}
+.bio-wiki{font-size:10px;margin-left:4px;text-decoration:none}
+@media(max-width:640px){.sgrid{grid-template-columns:1fr}input[type="date"]{min-width:120px}}
+</style>
 </head>
 
 <body data-theme="dark">
 <header>
   <div class="title-row">
-    <h1 id="pageTitle">GOES Data Explorer — NOAA/SWPC</h1>
-    <div style="display:flex;gap:8px;align-items:center">
+    <h1>GOES Data Explorer — NOAA/SWPC</h1>
+    <div style="display:flex;gap:6px;align-items:center">
       <span class="badge live" id="dataBadge">LIVE</span>
-      <button class="theme-btn" id="themeBtn" title="Тема">◐</button>
+      <button class="tbtn" id="langBtn" title="Language">🌐</button>
+      <button class="tbtn" id="themeBtn" title="Theme">◐</button>
     </div>
   </div>
+  <div class="row"><div class="chip" style="flex:1 1 100%"><div style="width:100%">
+    <label id="lPeriod">Period</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:5px">
+      <span style="font-size:10px;color:var(--muted);min-width:28px">Live</span>
+      <div class="period-group" id="livePresets"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:7px">
+      <span style="font-size:10px;color:var(--muted);min-width:28px" id="lFile">File</span>
+      <div class="period-group" id="filePresets"></div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <input id="startDate" type="date" style="min-width:140px"/>
+      <input id="startTime" type="time" value="00:00" style="min-width:90px"/>
+      <span style="color:var(--muted)">→</span>
+      <input id="endDate" type="date" style="min-width:140px"/>
+      <input id="endTime" type="time" value="23:59" style="min-width:90px"/>
+      <button id="applyRangeBtn">Apply</button>
+      <button id="resetZoomBtn">Reset</button>
+    </div>
+  </div></div></div>
 
   <div class="row">
-    <div class="chip" style="flex:1 1 100%">
-      <div style="width:100%">
-        <label>Период</label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:5px">
-          <span style="font-size:10px;color:var(--muted);min-width:28px">Live</span>
-          <div class="period-group" id="livePresets"></div>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:7px">
-          <span style="font-size:10px;color:var(--muted);min-width:28px">Файл</span>
-          <div class="period-group" id="filePresets"></div>
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          <input id="startDate" type="date" style="min-width:140px"/>
-          <input id="startTime" type="time" value="00:00" style="min-width:90px"/>
-          <span style="color:var(--muted)">→</span>
-          <input id="endDate" type="date" style="min-width:140px"/>
-          <input id="endTime" type="time" value="23:59" style="min-width:90px"/>
-          <button id="applyRangeBtn">Применить</button>
-          <button id="resetZoomBtn">Сброс</button>
-        </div>
-      </div>
+    <div class="chip"><div>
+      <label id="lProduct">Data Product</label>
+      <select id="productSel"></select>
+    </div></div>
+    <div class="chip"><div>
+      <label id="lChannel">Channel / Energy</label>
+      <select id="energySel"></select>
+    </div></div>
+    <div class="chip"><div>
+      <label id="lRefresh">Auto-refresh</label>
+      <select id="refreshSel"></select>
     </div>
-  </div>
-
-  <div class="row">
-    <div class="chip">
-      <div>
-        <label>Продукт данных</label>
-        <select id="productSel">
-          <optgroup label="Протоны">
-            <option value="integral-protons" selected>Интегральные протоны</option>
-            <option value="integral-protons-plot">Интегр. протоны (plot)</option>
-            <option value="differential-protons">Дифференц. протоны</option>
-            <option value="integral-proton-fluence">Флюенс протонов (7д)</option>
-          </optgroup>
-          <optgroup label="Электроны">
-            <option value="integral-electrons">Интегральные электроны</option>
-            <option value="differential-electrons">Дифференц. электроны</option>
-            <option value="integral-electron-fluence">Флюенс электронов (7д)</option>
-          </optgroup>
-          <optgroup label="Альфа-частицы">
-            <option value="differential-alphas">Дифференц. альфа</option>
-          </optgroup>
-          <optgroup label="Рентген / EM">
-            <option value="xrays">Рентген (X-ray)</option>
-            <option value="xray-background">X-ray фон (7д)</option>
-            <option value="euvs">EUVS (EUV спектр)</option>
-          </optgroup>
-          <optgroup label="Магнитное поле">
-            <option value="magnetometers">Магнитометры</option>
-          </optgroup>
-        </select>
-      </div>
-    </div>
-    <div class="chip">
-      <div>
-        <label>Канал / Энергия</label>
-        <select id="energySel"></select>
-      </div>
-    </div>
-    <div class="chip">
-      <div>
-        <label>Автообновление</label>
-        <select id="refreshSel">
-          <option value="0">выкл</option>
-          <option value="30">30с</option>
-          <option value="60" selected>60с</option>
-          <option value="120">120с</option>
-          <option value="300">5мин</option>
-        </select>
-      </div>
-      <button id="reloadBtn">⟳</button>
-    </div>
-    <div class="chip" style="flex:1 1 240px" id="sLevelChip">
-      <div style="width:100%">
-        <label>S-подсветка (≥10 MeV протоны)</label>
-        <div class="slevels" id="sLevelControls"></div>
-      </div>
-    </div>
+    <button id="reloadBtn">⟳</button></div>
+    <div class="chip" style="flex:1 1 240px" id="sLevelChip"><div style="width:100%">
+      <label id="lSlevels">S-highlight (≥10 MeV protons)</label>
+      <div class="slevels" id="sLevelControls"></div>
+    </div></div>
   </div>
 
   <div class="row" style="gap:8px">
     <details id="displaySettings" style="flex:1 1 420px">
-      <summary>Настройки отображения</summary>
+      <summary id="sumDisplay">Display Settings</summary>
+      <div class="panel-body"><div class="sgrid">
+        <div class="si"><label id="lLineColor">Line color</label><div class="sr"><input type="color" id="lineColorPick" value="#e7eefc"/><span id="lineColorVal" class="mono" style="font-size:11px;color:var(--muted)">#e7eefc</span></div></div>
+        <div class="si"><label><span id="lWidth">Width</span>: <span id="lineWidthVal">2.2</span></label><input type="range" id="lineWidthRange" min="0.5" max="6" step="0.1" value="2.2"/></div>
+        <div class="si"><label><span id="lOpacity">Opacity</span>: <span id="lineOpacityVal">0.95</span></label><input type="range" id="lineOpacityRange" min="0.1" max="1" step="0.05" value="0.95"/></div>
+        <div class="si"><label id="lCurve">Curve</label><select id="curveTypeSel"><option value="monotoneX" selected>Monotone X</option><option value="linear">Linear</option><option value="step">Step</option><option value="basis">Basis</option><option value="natural">Natural</option><option value="catmullRom">Catmull-Rom</option></select></div>
+        <div class="si"><label id="lPoints">Data points</label><div class="sr"><input type="checkbox" id="showPointsCb"/><span style="font-size:11px;color:var(--muted)" id="lShow">Show</span><input type="range" id="pointSizeRange" min="1" max="8" step="0.5" value="3" style="flex:1"/><span id="pointSizeVal" style="font-size:11px;color:var(--muted)">3</span></div></div>
+        <div class="si"><label id="lGrid">Grid</label><div class="sr"><input type="checkbox" id="showGridCb" checked/><span style="font-size:11px;color:var(--muted)" id="lShowG">Show</span><input type="range" id="gridOpacityRange" min="0.02" max="0.30" step="0.01" value="0.08" style="flex:1"/></div></div>
+        <div class="si"><label id="lThresholds">Threshold lines</label><div class="sr"><input type="checkbox" id="showThresholdsCb" checked/><span style="font-size:11px;color:var(--muted)" id="lShowT">Show</span></div></div>
+        <div class="si"><label id="lYaxis">Y-axis</label><select id="yAxisMode"><option value="auto" selected id="optAuto">Auto</option><option value="manual" id="optManual">Manual</option><option value="full" id="optFull">Full range</option></select><div class="sr" id="yManualRow" style="margin-top:5px;display:none"><input type="number" id="yMinInput" placeholder="Y min" style="width:80px"/><input type="number" id="yMaxInput" placeholder="Y max" style="width:80px"/></div></div>
+      </div></div>
+    </details>
+    <details id="nceiPanel" style="flex:1 1 340px">
+      <summary id="sumNcei">NCEI Archive (1974–2020, up to 50 years)</summary>
       <div class="panel-body">
-        <div class="sgrid">
-          <div class="si">
-            <label>Цвет линии</label>
-            <div class="sr">
-              <input type="color" id="lineColorPick" value="#e7eefc"/>
-              <span id="lineColorVal" class="mono" style="font-size:11px;color:var(--muted)">#e7eefc</span>
-            </div>
-          </div>
-          <div class="si">
-            <label>Толщина: <span id="lineWidthVal">2.2</span></label>
-            <input type="range" id="lineWidthRange" min="0.5" max="6" step="0.1" value="2.2"/>
-          </div>
-          <div class="si">
-            <label>Непрозрачность: <span id="lineOpacityVal">0.95</span></label>
-            <input type="range" id="lineOpacityRange" min="0.1" max="1" step="0.05" value="0.95"/>
-          </div>
-          <div class="si">
-            <label>Кривая</label>
-            <select id="curveTypeSel">
-              <option value="monotoneX" selected>Monotone X</option>
-              <option value="linear">Linear</option>
-              <option value="step">Step</option>
-              <option value="basis">Basis (сглажен.)</option>
-              <option value="natural">Natural</option>
-              <option value="catmullRom">Catmull-Rom</option>
-            </select>
-          </div>
-          <div class="si">
-            <label>Точки данных</label>
-            <div class="sr">
-              <input type="checkbox" id="showPointsCb"/>
-              <span style="font-size:11px;color:var(--muted)">Показать</span>
-              <input type="range" id="pointSizeRange" min="1" max="8" step="0.5" value="3" style="flex:1"/>
-              <span id="pointSizeVal" style="font-size:11px;color:var(--muted)">3</span>
-            </div>
-          </div>
-          <div class="si">
-            <label>Сетка</label>
-            <div class="sr">
-              <input type="checkbox" id="showGridCb" checked/>
-              <span style="font-size:11px;color:var(--muted)">Показать</span>
-              <input type="range" id="gridOpacityRange" min="0.02" max="0.30" step="0.01" value="0.08" style="flex:1"/>
-            </div>
-          </div>
-          <div class="si">
-            <label>Пороги S-уровней</label>
-            <div class="sr">
-              <input type="checkbox" id="showThresholdsCb" checked/>
-              <span style="font-size:11px;color:var(--muted)">Показать линии</span>
-            </div>
-          </div>
-          <div class="si">
-            <label>Y-ось</label>
-            <select id="yAxisMode">
-              <option value="auto" selected>Авто</option>
-              <option value="manual">Вручную</option>
-              <option value="full">Полный диапазон</option>
-            </select>
-            <div class="sr" id="yManualRow" style="margin-top:5px;display:none">
-              <input type="number" id="yMinInput" placeholder="Y min" style="width:80px"/>
-              <input type="number" id="yMaxInput" placeholder="Y max" style="width:80px"/>
-            </div>
-          </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px" id="nceiDesc">Auto-load monthly CSV from <a href="https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/avg/" target="_blank" style="color:var(--accent)">NOAA NCEI</a>. Integral protons (>=1…100 MeV), 5-min resolution. CORS enabled.</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">
+          <div><label id="lFrom">From</label><div style="display:flex;gap:4px"><select id="nceiYearFrom" style="width:80px"></select><select id="nceiMonFrom" style="width:60px"></select></div></div>
+          <div><label id="lTo">To</label><div style="display:flex;gap:4px"><select id="nceiYearTo" style="width:80px"></select><select id="nceiMonTo" style="width:60px"></select></div></div>
+          <button id="nceiLoadBtn">Load</button>
+          <button id="nceiAbortBtn" style="display:none">Cancel</button>
         </div>
+        <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
+          <button class="ncei-quick" data-months="1">1mo</button><button class="ncei-quick" data-months="3">3mo</button><button class="ncei-quick" data-months="6">6mo</button>
+          <button class="ncei-quick" data-months="12">1y</button><button class="ncei-quick" data-months="24">2y</button><button class="ncei-quick" data-months="60">5y</button><button class="ncei-quick" data-months="120">10y</button>
+        </div>
+        <div id="nceiProgress" style="font-size:11px;color:var(--muted);margin-top:6px"></div>
       </div>
     </details>
-
-    <details id="dataPanel" style="flex:1 1 320px">
-      <summary>Импорт / Экспорт данных</summary>
+    <details id="dataPanel" style="flex:1 1 280px">
+      <summary id="sumData">File / Export</summary>
       <div class="panel-body">
-        <div class="drop-zone" id="dropZone">
-          <div style="font-size:22px;margin-bottom:4px">📂</div>
-          <div>Перетащите файл сюда или нажмите</div>
-          <div style="font-size:10px;margin-top:3px">JSON (NOAA), CSV, TXT</div>
-          <input type="file" id="fileInput" accept=".json,.csv,.txt,.dat"/>
-        </div>
-        <div style="margin-top:8px">
-          <label>Свой URL (JSON / CSV)</label>
-          <div style="display:flex;gap:6px">
-            <input type="text" id="customUrl" placeholder="https://..." style="flex:1"/>
-            <button id="fetchUrlBtn">Загрузить</button>
-          </div>
-        </div>
+        <div class="drop-zone" id="dropZone"><div style="font-size:22px;margin-bottom:4px">📂</div><div id="dropLabel">Drop file here or click</div><div style="font-size:10px;margin-top:3px">JSON (NOAA), CSV, TXT</div><input type="file" id="fileInput" accept=".json,.csv,.txt,.dat"/></div>
+        <div style="margin-top:8px"><label id="lCustomUrl">Custom URL (JSON / CSV)</label><div style="display:flex;gap:6px"><input type="text" id="customUrl" placeholder="https://..." style="flex:1"/><button id="fetchUrlBtn">Load</button></div></div>
         <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
-          <button id="exportPngBtn">📷 PNG</button>
-          <button id="exportCsvBtn">📊 CSV</button>
-          <button id="exportSvgBtn">📋 SVG</button>
-          <button id="clearFileBtn" style="margin-left:auto">✕ Очистить файл</button>
+          <button id="exportPngBtn">📷 PNG</button><button id="exportCsvBtn">📊 CSV</button><button id="exportSvgBtn">📋 SVG</button>
+          <button id="clearFileBtn" style="margin-left:auto" data-en="✕ Clear" data-ru="✕ Очистить">✕ Clear</button>
         </div>
         <div id="fileInfo" style="font-size:10.5px;color:var(--muted);margin-top:7px"></div>
       </div>
     </details>
   </div>
-
-  <div class="status" id="status">Загрузка…</div>
+  <div class="status" id="status">Loading…</div>
 </header>
-
-<div class="wrap">
-  <div class="card">
-    <svg id="chart" viewBox="0 0 1080 560" preserveAspectRatio="xMidYMid meet"></svg>
-  </div>
-</div>
-
-<div class="toolbar">
-  <div style="font-size:11px;color:var(--muted)" id="pointInfo"></div>
-</div>
-
-<div class="hint">
-  Drag на графике — zoom по времени. Сброс — кнопка «Сброс».<br>
-  Все продукты: <a href="https://services.swpc.noaa.gov/json/goes/primary/" target="_blank" class="mono">services.swpc.noaa.gov/json/goes/primary/</a> (до 7 дней).<br>
-  Для более длинных периодов импортируйте файл из
-  <a href="https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/" target="_blank">NOAA NCEI</a>,
-  <a href="https://www.swpc.noaa.gov/products/goes-proton-flux" target="_blank">SWPC</a> или
-  <a href="https://cdaweb.gsfc.nasa.gov/" target="_blank">NASA CDAWeb</a>.
-</div>
+<div class="wrap"><div class="card"><svg id="chart" viewBox="0 0 1080 560" preserveAspectRatio="xMidYMid meet"></svg></div></div>
+<div class="wrap"><details id="bioPanel" open style="margin-bottom:8px"><summary id="sumBio">Biosphere Impact Thresholds</summary><div class="panel-body" id="bioContent"></div></details></div>
+<div class="toolbar"><div style="font-size:11px;color:var(--muted)" id="pointInfo"></div></div>
+<div class="hint" id="hintArea"></div>
 
 <script>
 (()=>{
-/* ══════════ PRODUCT CATALOG ══════════
-   Fully synced with https://services.swpc.noaa.gov/json/goes/primary/
-   Each product knows its available time ranges, value field, channel field,
-   Y-axis type, unit, and whether S-level overlays apply.
-*/
+/* ═══ i18n ═══ */
+let L=/^ru\b/.test(navigator.language)?'ru':'en';
+const B=(en,ru)=>({en,ru});
+const t=k=>(k&&typeof k==='object')?(k[L]||k.en||''):(k||'');
+
+const I18={
+  period:B('Period','Период'), product:B('Data Product','Продукт данных'), channel:B('Channel / Energy','Канал / Энергия'),
+  refresh:B('Auto-refresh','Автообновление'), slevels:B('S-highlight (≥10 MeV protons)','S-подсветка (≥10 MeV протоны)'),
+  display:B('Display Settings','Настройки отображения'), lineColor:B('Line color','Цвет линии'),
+  width:B('Width','Толщина'), opacity:B('Opacity','Непрозрачность'), curve:B('Curve','Кривая'),
+  points:B('Data points','Точки данных'), show:B('Show','Показать'), grid:B('Grid','Сетка'),
+  thresholds:B('Threshold lines','Пороговые линии'), yaxis:B('Y-axis','Y-ось'),
+  auto:B('Auto','Авто'), manual:B('Manual','Вручную'), fullRange:B('Full range','Полный диапазон'),
+  ncei:B('NCEI Archive (1974–2020, up to 50 years)','NCEI Архив (1974–2020, до 50 лет)'),
+  nceiDesc:B('Auto-load monthly CSV from <a href="https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/avg/" target="_blank" style="color:var(--accent)">NOAA NCEI</a>. Integral protons (>=1…100 MeV), 5-min resolution. CORS enabled.','Автозагрузка помесячных CSV из <a href="https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/avg/" target="_blank" style="color:var(--accent)">NOAA NCEI</a>. Интегральные протоны (>=1…100 MeV), 5-мин. CORS открыт.'),
+  from:B('From','С'), to:B('To','По'), load:B('Load','Загрузить'), cancel:B('Cancel','Отмена'),
+  fileExport:B('File / Export','Файл / Экспорт'), drop:B('Drop file here or click','Перетащите файл сюда или нажмите'),
+  customUrl:B('Custom URL (JSON / CSV)','Свой URL (JSON / CSV)'), clear:B('✕ Clear','✕ Очистить'),
+  apply:B('Apply','Применить'), reset:B('Reset','Сброс'), file:B('File','Файл'),
+  bio:B('Biosphere Impact Thresholds','Пороги воздействия на биосферу'),
+  off:B('off','выкл'), loading:B('Loading…','Загрузка…'), noData:B('No data.','Нет данных.'),
+  noPoints:B('No data points in selected range.','В выбранном диапазоне нет точек.'),
+  badRange:B('Invalid range.','Неверный период.'),
+  hint:B(
+    'Drag on chart to zoom. Reset — "Reset" button.<br>Live (7 days): <a href="https://services.swpc.noaa.gov/json/goes/primary/" target="_blank" class="mono">services.swpc.noaa.gov</a> (12 GOES-R products).<br>Archive (1974–2020): <a href="https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/avg/" target="_blank" class="mono">NCEI GOES SEM</a> — auto-load monthly CSV in browser (CORS enabled).',
+    'Drag на графике — zoom по времени. Сброс — кнопка «Сброс».<br>Live (7 дней): <a href="https://services.swpc.noaa.gov/json/goes/primary/" target="_blank" class="mono">services.swpc.noaa.gov</a> (12 продуктов GOES-R).<br>Архив (1974–2020): <a href="https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/avg/" target="_blank" class="mono">NCEI GOES SEM</a> — автозагрузка CSV в браузер (CORS открыт).'
+  ),
+  tblThreshold:B('Threshold','Порог'), tblSeverity:B('Severity','Уровень'),
+  tblFlora:B('🌿 Flora','🌿 Флора'), tblFauna:B('🐾 Fauna','🐾 Фауна'), tblHumans:B('👤 Humans','👤 Люди'),
+  prodPts:B('Product','Продукт'), chanPts:B('channel','канал'), ptsPts:B('points','точек'),
+  drawn:B('drawn','отрисовано'), window:B('Window','Окно'), last:B('Last','Последнее'),
+  totalInSet:B('Total in set','Всего в наборе'), source:B('Source','Источник'),
+  nceiNeedFile:B('For this period, load data from NCEI Archive panel or import a file.','Для этого периода загрузите данные из панели NCEI Архив или импортируйте файл.'),
+  reading:B('Reading','Чтение'), error:B('Error','Ошибка'), badFormat:B('Could not recognize file format.','Не удалось распознать формат.'),
+  noDataUrl:B('No data found at this URL.','Данных не найдено.'), enterUrl:B('Enter URL.','Введите URL.'),
+  aborted:B('Aborted.','Отменено.'), done:B('Done','Готово'), records:B('records','записей'),
+  months:B('months','мес.'), skipped:B('skipped','пропущено'), invalidRange:B('Invalid range.','Неверный диапазон.'),
+  tooLarge:B('Range too large (max 600 months).','Слишком большой диапазон (макс. 600 месяцев).'),
+  loadingMonth:B('Loading','Загрузка'),
+};
+
+const REFRESH_OPTS=[{v:'0',en:'off',ru:'выкл'},{v:'30',l:'30s'},{v:'60',l:'60s',sel:true},{v:'120',l:'120s'},{v:'300',l:'5min'}];
+
+function applyLang(){
+  const s=(id,k)=>{const e=document.getElementById(id);if(e)e.textContent=t(I18[k]||k);};
+  const h=(id,k)=>{const e=document.getElementById(id);if(e)e.innerHTML=t(I18[k]);};
+  s('lPeriod','period');s('lProduct','product');s('lChannel','channel');s('lRefresh','refresh');
+  s('lSlevels','slevels');s('sumDisplay','display');s('lLineColor','lineColor');
+  s('lWidth','width');s('lOpacity','opacity');s('lCurve','curve');s('lPoints','points');
+  s('lShow','show');s('lGrid','grid');s('lShowG','show');s('lShowT','show');
+  s('lThresholds','thresholds');s('lYaxis','yaxis');
+  s('optAuto','auto');s('optManual','manual');s('optFull','fullRange');
+  s('sumNcei','ncei');h('nceiDesc','nceiDesc');s('lFrom','from');s('lTo','to');
+  s('nceiLoadBtn','load');s('nceiAbortBtn','cancel');
+  s('sumData','fileExport');s('dropLabel','drop');s('lCustomUrl','customUrl');
+  s('fetchUrlBtn','load');s('clearFileBtn','clear');
+  s('applyRangeBtn','apply');s('resetZoomBtn','reset');s('lFile','file');
+  s('sumBio','bio');h('hintArea','hint');
+  document.documentElement.lang=L;
+  document.querySelectorAll('.ncei-quick').forEach(b=>{
+    const n=+b.dataset.months;
+    if(n<12)b.textContent=(L==='ru'?n+'м':n+'mo');
+    else b.textContent=(L==='ru'?(n/12)+'г':(n/12)+'y');
+  });
+  // Refresh selects
+  const rs=document.getElementById('refreshSel');
+  if(rs){rs.innerHTML='';REFRESH_OPTS.forEach(o=>{
+    const opt=document.createElement('option');opt.value=o.v;opt.textContent=o.l||(L==='ru'?o.ru:o.en);if(o.sel)opt.selected=true;rs.appendChild(opt);
+  });}
+  populateProductSel();
+  buildFPLabels();
+  renderBioPanel();
+}
+
+/* ═══ PRODUCTS ═══ */
 const PRODUCTS=[
-  {id:'integral-protons',       label:'Интегр. протоны',        unit:'pfu',               logY:true,  sLevels:true,  vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
-  {id:'integral-protons-plot',  label:'Интегр. протоны (plot)', unit:'pfu',               logY:true,  sLevels:true,  vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
-  {id:'differential-protons',   label:'Дифференц. протоны',     unit:'p/(cm²·s·sr·MeV)',  logY:true,  sLevels:false, vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
-  {id:'integral-proton-fluence',label:'Флюенс протонов',        unit:'#/cm²',             logY:true,  sLevels:false, vField:'fluence',    chField:'energy', ranges:['7-day']},
-  {id:'integral-electrons',     label:'Интегр. электроны',      unit:'pfu',               logY:true,  sLevels:false, vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
-  {id:'differential-electrons', label:'Дифференц. электроны',   unit:'e/(cm²·s·sr·keV)',  logY:true,  sLevels:false, vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
-  {id:'integral-electron-fluence',label:'Флюенс электронов',    unit:'#/cm²',             logY:true,  sLevels:false, vField:'fluence',    chField:'energy', ranges:['7-day']},
-  {id:'differential-alphas',    label:'Дифференц. альфа',       unit:'α/(cm²·s·sr·MeV)',  logY:true,  sLevels:false, vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
-  {id:'xrays',                  label:'Рентген (X-ray)',        unit:'W/m²',              logY:true,  sLevels:false, vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
-  {id:'xray-background',        label:'X-ray фон',             unit:'W/m²',              logY:true,  sLevels:false, vField:'background', chField:null,     ranges:['7-day']},
-  {id:'euvs',                   label:'EUVS (EUV)',             unit:'W/m²',              logY:true,  sLevels:false, vField:'value',      chField:'line',   ranges:['6-hour','1-day','3-day','7-day']},
-  {id:'magnetometers',          label:'Магнитометры',           unit:'nT',                logY:false, sLevels:false, vField:null,         chField:null,     ranges:['6-hour','1-day','3-day','7-day'], special:'mag'},
+  {id:'integral-protons',       label:B('Integral Protons','Интегр. протоны'),        grp:B('Protons','Протоны'),       unit:'pfu',               logY:true,  sLevels:true,  vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
+  {id:'integral-protons-plot',  label:B('Integral Protons (plot)','Интегр. протоны (plot)'), grp:B('Protons','Протоны'), unit:'pfu',               logY:true,  sLevels:true,  vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
+  {id:'differential-protons',   label:B('Differential Protons','Дифференц. протоны'),  grp:B('Protons','Протоны'),      unit:'p/(cm²·s·sr·MeV)',  logY:true,  sLevels:false, vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
+  {id:'integral-proton-fluence',label:B('Proton Fluence','Флюенс протонов'),           grp:B('Protons','Протоны'),      unit:'#/cm²',             logY:true,  sLevels:false, vField:'fluence',    chField:'energy', ranges:['7-day']},
+  {id:'integral-electrons',     label:B('Integral Electrons','Интегр. электроны'),      grp:B('Electrons','Электроны'),  unit:'pfu',               logY:true,  sLevels:false, vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
+  {id:'differential-electrons', label:B('Differential Electrons','Дифференц. электроны'),grp:B('Electrons','Электроны'), unit:'e/(cm²·s·sr·keV)',  logY:true,  sLevels:false, vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
+  {id:'integral-electron-fluence',label:B('Electron Fluence','Флюенс электронов'),     grp:B('Electrons','Электроны'),  unit:'#/cm²',             logY:true,  sLevels:false, vField:'fluence',    chField:'energy', ranges:['7-day']},
+  {id:'differential-alphas',    label:B('Differential Alphas','Дифференц. альфа'),      grp:B('Alpha','Альфа-частицы'),  unit:'α/(cm²·s·sr·MeV)',  logY:true,  sLevels:false, vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
+  {id:'xrays',                  label:B('X-rays','Рентген (X-ray)'),                    grp:B('X-ray / EM','Рентген / EM'), unit:'W/m²',           logY:true,  sLevels:false, vField:'flux',       chField:'energy', ranges:['6-hour','1-day','3-day','7-day']},
+  {id:'xray-background',        label:B('X-ray Background','X-ray фон'),               grp:B('X-ray / EM','Рентген / EM'), unit:'W/m²',           logY:true,  sLevels:false, vField:'background', chField:null,     ranges:['7-day']},
+  {id:'euvs',                   label:B('EUVS (EUV)','EUVS (EUV)'),                    grp:B('X-ray / EM','Рентген / EM'), unit:'W/m²',           logY:true,  sLevels:false, vField:'value',      chField:'line',   ranges:['6-hour','1-day','3-day','7-day']},
+  {id:'magnetometers',          label:B('Magnetometers','Магнитометры'),                 grp:B('Magnetic Field','Магнитное поле'), unit:'nT',       logY:false, sLevels:false, vField:null,         chField:null,     ranges:['6-hour','1-day','3-day','7-day'], special:'mag'},
 ];
 
-const LIVE_P=[
-  {l:'6ч',r:'6-hour'},{l:'1д',r:'1-day'},{l:'3д',r:'3-day'},{l:'7д',r:'7-day'}
-];
-const FILE_P=[
-  {l:'27д',d:27},{l:'1м',d:30},{l:'3м',d:91},{l:'6м',d:182},
-  {l:'1г',d:365},{l:'2г',d:730},{l:'5г',d:1826},
-  {l:'10г',d:3652},{l:'25г',d:9131},{l:'50л',d:18262}
-];
-const SL=[
-  {id:'S1',thr:10},{id:'S2',thr:100},{id:'S3',thr:1000},{id:'S4',thr:10000},{id:'S5',thr:100000}
-];
+function populateProductSel(){
+  const sel=document.getElementById('productSel');
+  const cur=sel.value||ST.product;
+  sel.innerHTML='';
+  const grps={};
+  PRODUCTS.forEach(p=>{const g=t(p.grp);if(!grps[g])grps[g]=[];grps[g].push(p);});
+  Object.entries(grps).forEach(([g,ps])=>{
+    const og=document.createElement('optgroup');og.label=g;
+    ps.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=t(p.label);if(p.id===cur)o.selected=true;og.appendChild(o);});
+    sel.appendChild(og);
+  });
+}
+
+const LIVE_P=[{l:'6h',r:'6-hour'},{l:'1d',r:'1-day'},{l:'3d',r:'3-day'},{l:'7d',r:'7-day'}];
+const FILE_P=[{en:'27d',ru:'27д',d:27},{en:'1mo',ru:'1м',d:30},{en:'3mo',ru:'3м',d:91},{en:'6mo',ru:'6м',d:182},{en:'1y',ru:'1г',d:365},{en:'2y',ru:'2г',d:730},{en:'5y',ru:'5г',d:1826},{en:'10y',ru:'10г',d:3652},{en:'25y',ru:'25г',d:9131},{en:'50y',ru:'50л',d:18262}];
+function fpLabel(p){return L==='ru'?p.ru:p.en;}
+function buildFPLabels(){document.querySelectorAll('#filePresets .pbtn').forEach((b,i)=>{if(FILE_P[i])b.textContent=fpLabel(FILE_P[i]);});}
+
+const SL=[{id:'S1',thr:10},{id:'S2',thr:100},{id:'S3',thr:1000},{id:'S4',thr:10000},{id:'S5',thr:100000}];
 const SF={S1:'rgba(66,165,245,0.14)',S2:'rgba(126,87,194,0.14)',S3:'rgba(255,202,40,0.14)',S4:'rgba(255,112,67,0.16)',S5:'rgba(239,83,80,0.18)'};
 const SS={S1:'rgba(66,165,245,0.32)',S2:'rgba(126,87,194,0.32)',S3:'rgba(255,202,40,0.34)',S4:'rgba(255,112,67,0.36)',S5:'rgba(239,83,80,0.40)'};
 const CURVES={monotoneX:d3.curveMonotoneX,linear:d3.curveLinear,step:d3.curveStep,basis:d3.curveBasis,natural:d3.curveNatural,catmullRom:d3.curveCatmullRom};
 
-/* ─────────── state ─────────── */
-const ST={
-  apiData:[],fileData:[],fullSeries:[],fullDomain:null,currentDomain:null,
-  src:'api',preset:'3д',product:'integral-protons',energy:'>=10 MeV',
-  lineColor:'#e7eefc',lineWidth:2.2,lineOpacity:.95,curve:'monotoneX',
-  showPts:false,ptSize:3,showGrid:true,gridOp:.08,showThr:true,
-  yMode:'auto',yMin:null,yMax:null,theme:'dark',
-  sOn:{S1:true,S2:true,S3:true,S4:true,S5:true},
-  timer:null
-};
+/* ═══ BIO THRESHOLDS ═══ */
+const BIO=[
+{prod:'integral-protons',ch:'>=10 MeV',unit:'pfu',
+ wiki:B('https://en.wikipedia.org/wiki/Solar_particle_event','https://ru.wikipedia.org/wiki/Солнечная_протонная_вспышка'),
+ note:B('NOAA Solar Radiation Storm scale (S1–S5). >=10 MeV protons are the primary radiation storm indicator.','Шкала NOAA Solar Radiation Storm (S1–S5). Протоны >=10 MeV — основной индикатор радиационных штормов.'),
+ levels:[
+  {v:10,id:'S1',color:'#42a5f5',sev:B('Moderate','Умеренный'),
+   flora:B('No effect. Atmosphere fully shields terrestrial vegetation.','Нет воздействия. Атмосфера полностью защищает наземную растительность.'),
+   fauna:B('Minor effect on navigation of migratory birds and sea turtles (magnetic disorientation).','Минимальное влияние на навигацию перелётных птиц и морских черепах (магнитная дезориентация).'),
+   humans:B('Slight radiation increase in polar regions. Minimal risk for high-altitude polar flight crews.','Незначительное повышение радиации в полярных зонах. Мин. риск для экипажей полярных рейсов.')},
+  {v:100,id:'S2',color:'#7e57c2',sev:B('Strong','Сильный'),
+   flora:B('No significant effect on terrestrial plants.','Нет значимого воздействия на наземные растения.'),
+   fauna:B('Disrupted magnetic navigation in whales, dolphins, migratory birds. Stress in polar organisms.','Нарушения навигации у китов, дельфинов, птиц. Стресс у полярных организмов.'),
+   humans:B('Small radiation dose for polar flight passengers (~0.1 mSv). Possible satellite anomalies.','Малая доза для пассажиров полярных рейсов (~0.1 мЗв). Возможны сбои спутников.')},
+  {v:1e3,id:'S3',color:'#ffca28',sev:B('Dangerous','Опасный'),
+   flora:B('During prolonged events (>24h) — increased mutagenicity in high-altitude plants (>3000 m).','При длительных событиях (>24ч) — повышенная мутагенность в высокогорных растениях (>3000 м).'),
+   fauna:B('Radiation stress for high-altitude/polar organisms. Mass disorientation of migratory species.','Радиационный стресс для высотных/полярных организмов. Массовая дезориентация мигрирующих видов.'),
+   humans:B('Dangerous for astronauts (shelter required). Elevated dose for flight crews (~1 mSv). HF radio/satellite disruptions.','Опасно для космонавтов (необходимо укрытие). Доза для авиаэкипажей (~1 мЗв). Сбои КВ-связи.')},
+  {v:1e4,id:'S4',color:'#ff7043',sev:B('Critical','Критический'),
+   flora:B('DNA damage in plants at high altitudes. Increased mutations in pollen and seeds.','Повреждение ДНК в растениях на больших высотах. Увеличение мутаций в пыльце и семенах.'),
+   fauna:B('Real radiation damage to animals at altitude. Reproductive disruption in polar birds.','Реальный радиационный ущерб для животных на высотах. Нарушение репродукции у полярных птиц.'),
+   humans:B('Significant dose for airline passengers (~10 mSv). Critical danger for astronauts. Flight rerouting required.','Значительная доза для авиапассажиров (~10 мЗв). Критическая опасность для космонавтов. Перенаправление рейсов.')},
+  {v:1e5,id:'S5',color:'#ef5350',sev:B('Extreme / Fatal','Экстремальный / Фатальный'),
+   flora:B('<a href="https://en.wikipedia.org/wiki/Ground-level_enhancement" target="_blank">GLE</a>: protons reach surface. Direct chromosome damage in plants. Long-term seed viability impact.','<a href="https://ru.wikipedia.org/wiki/Наземное_усиление" target="_blank">GLE</a>: протоны достигают поверхности. Повреждение хромосом растений. Долгосрочное влияние на семена.'),
+   fauna:B('Ground-level radiation elevated. Real danger for animals in open areas. Mass mortality of upper-ocean organisms.','Наземная радиация повышена. Опасность для животных на открытой местности. Массовая гибель организмов в верхних слоях океана.'),
+   humans:B('GLE — surface radiation elevated. Dangerous without shelter (>100 mSv). Lethal dose for unshielded astronauts (~1-10 Sv/h). <a href="https://en.wikipedia.org/wiki/Carrington_Event" target="_blank">Carrington-class</a>.','GLE — радиация на поверхности повышена. Без укрытия — опасно (>100 мЗв). Летальная доза для космонавтов (~1-10 Зв/ч). <a href="https://ru.wikipedia.org/wiki/Событие_Кэррингтона" target="_blank">Событие Кэррингтона</a>.')}
+]},
+{prod:'integral-protons',ch:'>=100 MeV',unit:'pfu',
+ wiki:B('https://en.wikipedia.org/wiki/Ground-level_enhancement','https://ru.wikipedia.org/wiki/Наземное_усиление'),
+ note:B('High-energy protons (>=100 MeV) can penetrate the atmosphere and reach Earth\'s surface (Ground-Level Enhancement).','Высокоэнергетичные протоны (>=100 MeV) проникают через атмосферу и достигают поверхности (Ground-Level Enhancement).'),
+ levels:[
+  {v:1,id:'GLE',color:'#ffca28',sev:B('Dangerous','Опасный'),
+   flora:B('Surface penetration begins. Prolonged events damage plant cells at exposed altitudes.','Начало проникновения к поверхности. Повреждение растительных клеток на открытых высотах.'),
+   fauna:B('Elevated radiation background. Small organisms and embryos most vulnerable.','Повышение радиационного фона. Мелкие организмы и эмбрионы наиболее уязвимы.'),
+   humans:B('GLE detected. Neutron monitor increase at surface. Additional dose ~0.01-0.1 mSv.','GLE. Повышение нейтронного фона на поверхности. Доза ~0.01-0.1 мЗв.')},
+  {v:10,id:'GLE+',color:'#ff7043',sev:B('Critical','Критический'),
+   flora:B('Significant surface irradiation. Mutagenesis in open crops.','Значительное облучение на поверхности. Мутагенез в открытых посевах.'),
+   fauna:B('Direct radiation damage to small terrestrial animals and birds.','Прямое радиационное повреждение мелких наземных животных и птиц.'),
+   humans:B('Serious GLE. Additional dose up to several mSv. Dangerous for aviation crews.','Серьёзное GLE. Доза до нескольких мЗв. Опасно для авиаперсонала.')},
+  {v:100,id:B('Extreme','Экстрем.'),color:'#ef5350',sev:B('Extreme / Fatal','Экстремальный / Фатальный'),
+   flora:B('Massive damage. <a href="https://en.wikipedia.org/wiki/Carrington_Event" target="_blank">Carrington-class</a> event. Mass crop destruction.','Масштабное повреждение. Аналог <a href="https://ru.wikipedia.org/wiki/Событие_Кэррингтона" target="_blank">Каррингтонского события</a>. Гибель культур.'),
+   fauna:B('Lethal doses for small animals on surface during prolonged exposure.','Летальные дозы для мелких животных на поверхности при длительном воздействии.'),
+   humans:B('Extreme radiation environment. Potentially lethal doses without shelter (>1 Sv).','Экстремальная радиация. Потенциально летальные дозы без укрытия (>1 Зв).')}
+]},
+{prod:'integral-protons-plot',ch:'>=10 MeV',unit:'pfu',
+ wiki:B('https://en.wikipedia.org/wiki/Solar_particle_event','https://ru.wikipedia.org/wiki/Солнечная_протонная_вспышка'),
+ note:B('Same as integral protons: NOAA S1–S5 scale.','Аналогично integral-protons: шкала NOAA S1–S5.'),
+ levels:[
+  {v:10,id:'S1',color:'#42a5f5',sev:B('Moderate','Умеренный'),flora:B('No effect.','Нет.'),fauna:B('Minor bird navigation effect.','Мин. влияние на навигацию птиц.'),humans:B('Minor polar radiation.','Мин. радиация в полярных зонах.')},
+  {v:100,id:'S2',color:'#7e57c2',sev:B('Strong','Сильный'),flora:B('None.','Нет.'),fauna:B('Marine/bird nav. disruption.','Нарушение навигации морских/перелётных видов.'),humans:B('Small dose on polar flights.','Малая доза на полярных рейсах.')},
+  {v:1e3,id:'S3',color:'#ffca28',sev:B('Dangerous','Опасный'),flora:B('High-altitude mutagenicity.','Мутагенность в высокогорье.'),fauna:B('Radiation stress; disorientation.','Радиац. стресс; дезориентация.'),humans:B('Dangerous for astronauts; crew dose elevated.','Опасно для космонавтов; повышенная доза авиаэкипажам.')},
+  {v:1e4,id:'S4',color:'#ff7043',sev:B('Critical','Критический'),flora:B('DNA damage at altitude.','Повреждение ДНК на высотах.'),fauna:B('Radiation damage at altitude.','Радиац. ущерб на высотах.'),humans:B('Significant passenger dose; critical for astronauts.','Значит. доза авиапассажирам; критич. для космонавтов.')},
+  {v:1e5,id:'S5',color:'#ef5350',sev:B('Extreme','Экстремальный'),flora:B('GLE: surface damage.','GLE: повреждение на поверхности.'),fauna:B('Ground-level danger.','Наземная опасность.'),humans:B('GLE: dangerous without shelter; lethal in space.','GLE: опасно без укрытия; летально в космосе.')}
+]},
+{prod:'xrays',ch:'0.1-0.8nm',unit:'W/m²',
+ wiki:B('https://en.wikipedia.org/wiki/Solar_flare','https://ru.wikipedia.org/wiki/Солнечная_вспышка'),
+ note:B('NOAA Radio Blackout scale (R1–R5). X-ray flares → ionosphere ionization → communication/navigation loss.','Шкала NOAA Radio Blackout (R1–R5). Рентген. вспышки → ионизация ионосферы → потеря связи и навигации.'),
+ levels:[
+  {v:1e-5,id:'M1 / R1',color:'#42a5f5',sev:B('Moderate','Умеренный'),
+   flora:B('None. Atmosphere fully absorbs X-rays.','Нет. Атмосфера полностью поглощает рентген.'),
+   fauna:B('No direct effect. Indirect: ionosphere changes may affect echolocation.','Нет прямого. Косвенно: изменения ионосферы могут влиять на эхолокацию.'),
+   humans:B('Brief HF radio degradation on sunlit side.','Кратковременная деградация КВ-связи на освещённой стороне.')},
+  {v:5e-5,id:'M5 / R2',color:'#7e57c2',sev:B('Strong','Сильный'),
+   flora:B('No direct effect.','Нет прямого.'),fauna:B('No direct. EM environment disrupted.','Нет прямого. Нарушение электромагнитной среды.'),
+   humans:B('HF radio loss for tens of minutes. GPS errors. Aviation risk in polar zones.','Потеря КВ-связи на десятки минут. Ошибки GPS. Угроза для авиации.')},
+  {v:1e-4,id:'X1 / R3',color:'#ffca28',sev:B('Dangerous','Опасный'),
+   flora:B('No direct (atmosphere shields). Indirect: stratospheric <a href="https://en.wikipedia.org/wiki/Ozone_depletion" target="_blank">ozone depletion</a>.','Нет прямого. Косвенно: разрушение стратосферного <a href="https://ru.wikipedia.org/wiki/Разрушение_озонового_слоя" target="_blank">озона</a>.'),
+   fauna:B('Indirect: ozone thinning → UV increase → phytoplankton & coral reef stress.','Косвенно: истончение озона → УФ → стресс для фитопланктона и коралловых рифов.'),
+   humans:B('Full HF blackout ~1 hour. Serious navigation errors. Aviation danger.','Полный блэкаут КВ-связи ~1 час. Серьёзные ошибки навигации.')},
+  {v:1e-3,id:'X10 / R4',color:'#ff7043',sev:B('Critical','Критический'),
+   flora:B('Cascade: flare → proton event → GLE. 1-5% stratospheric ozone destruction.','Каскад: вспышка → протонное событие → GLE. Разрушение озона на 1-5%.'),
+   fauna:B('Significant ozone thinning. Mass stress in phytoplankton, fish larvae, amphibians.','Значительное истончение озона. Массовый стресс у фитопланктона, личинок рыб, амфибий.'),
+   humans:B('Total radio/GPS loss for hours. Navigation impossible. Emergency polar flight landing.','Полная потеря радио/GPS на часы. Экстренная посадка полярных рейсов.')},
+  {v:2e-3,id:'X20 / R5',color:'#ef5350',sev:B('Extreme','Экстремальный'),
+   flora:B('Extreme UV, ozone destruction. Measurable ecosystem productivity decline.','Экстремальное УФ, разрушение озона. Измеримое снижение продуктивности экосистем.'),
+   fauna:B('Mass phytoplankton/coral/larvae stress & mortality. Photosynthesis suppression in upper ocean.','Массовый стресс/гибель фитопланктона, кораллов, личинок. Подавление фотосинтеза.'),
+   humans:B('Complete communications blackout for many hours. Navigation chaos. Cascading satellite failures.','Полный коммуникационный блэкаут. Хаос в навигации. Каскадный отказ спутников.')}
+]},
+{prod:'integral-electrons',ch:'>=2 MeV',unit:'pfu',
+ wiki:B('https://en.wikipedia.org/wiki/Killer_electrons','https://ru.wikipedia.org/wiki/Радиационные_пояса_Земли'),
+ note:B('Relativistic electrons (>=2 MeV). Primary threat: deep dielectric charging of satellites (killer electrons).','Релятивистские электроны (>=2 MeV). Основная угроза — глубокая зарядка диэлектриков спутников (killer electrons).'),
+ levels:[
+  {v:1e3,id:B('Warning','Предупр.'),color:'#ffca28',sev:B('Dangerous','Опасный'),
+   flora:B('No direct. Electrons cannot penetrate the atmosphere.','Нет прямого. Электроны не проникают через атмосферу.'),
+   fauna:B('No direct effect on terrestrial/marine organisms.','Нет прямого воздействия на наземных/морских организмов.'),
+   humans:B('Satellite failure risk (deep dielectric charging). GPS, communications, weather monitoring threatened.','Риск отказа спутников. Угроза GPS, связи, метеонаблюдениям.')},
+  {v:1e4,id:B('Alert','Тревога'),color:'#ff7043',sev:B('Critical','Критический'),
+   flora:B('No direct. Indirect: weather satellite failures → forecast loss → crop damage.','Нет прямого. Косвенно: отказ метеоспутников → потеря прогноза → ущерб агрокультурам.'),
+   fauna:B('No direct. Indirect: tracking/monitoring satellite failures.','Нет прямого. Косвенно: отказ спутников мониторинга экосистем.'),
+   humans:B('Mass satellite failures. GPS/GLONASS loss. Satellite comms down. Cascading infrastructure failures.','Массовые отказы спутников. Потеря GPS/ГЛОНАСС. Каскадные сбои инфраструктуры.')}
+]},
+{prod:'magnetometers',ch:null,unit:'nT',
+ wiki:B('https://en.wikipedia.org/wiki/Geomagnetic_storm','https://ru.wikipedia.org/wiki/Магнитная_буря'),
+ note:B('Magnetic field at geosynchronous orbit. Sharp changes indicate <a href="https://en.wikipedia.org/wiki/Geomagnetic_storm" target="_blank">geomagnetic storms</a> (NOAA G-scale). Impact via geomagnetically induced currents (GIC).','Магнитное поле на геосинхронной орбите. Резкие изменения → <a href="https://ru.wikipedia.org/wiki/Магнитная_буря" target="_blank">геомагнитные бури</a> (G-шкала NOAA). Воздействие через геомагнитно-индуцированные токи (GIC).'),
+ levels:[
+  {v:null,id:'G1–G2',color:'#7e57c2',sev:B('Moderate–Strong','Умеренный–Сильный'),isInfo:true,
+   flora:B('No direct. Indirect: GIC cause pipeline corrosion → soil contamination.','Нет прямого. Косвенно: GIC → коррозия трубопроводов → загрязнение почв.'),
+   fauna:B('Magnetic navigation disruption: <a href="https://en.wikipedia.org/wiki/Cetacean_stranding" target="_blank">whale/dolphin strandings</a>, bird & bee disorientation.','Дезориентация: <a href="https://ru.wikipedia.org/wiki/Выбрасывание_китообразных_на_берег" target="_blank">выбросы китов/дельфинов</a>, птиц, пчёл.'),
+   humans:B('Power grid fluctuations. GPS/compass errors. Aurora visible to 55° latitude.','Сбои электросетей. Ошибки GPS/компасов. Полярные сияния до 55° широты.')},
+  {v:null,id:'G3–G4',color:'#ff7043',sev:B('Dangerous–Critical','Опасный–Критический'),isInfo:true,
+   flora:B('Eddy currents in soil disrupt root electrochemistry. Growth/photosynthesis affected near pipelines.','Вихревые токи нарушают электрохимию корней. Влияние на рост вблизи трубопроводов.'),
+   fauna:B('Mass whale/dolphin strandings. Migratory bird deaths from disorientation. Bee colony stress.','Массовые выбросы китов. Гибель птиц от дезориентации. Стресс у пчёл.'),
+   humans:B('Widespread power outages. Transformer damage. Satellite failures. Compass navigation impossible.','Обширные отключения электроэнергии. Повреждение трансформаторов. Отказы спутников.')},
+  {v:null,id:'G5',color:'#ef5350',sev:B('Extreme','Экстремальный'),isInfo:true,
+   flora:B('Massive pipeline corrosion → soil poisoning. Grid collapse → irrigation/greenhouse failure. Long-term ecological damage.','Масштабная коррозия → отравление почв. Коллапс электросетей → отказ ирригации. Долгосрочный экоущерб.'),
+   fauna:B('Mass mortality: cetaceans, birds, insect navigators. Cascading ecosystem collapse affecting migratory species.','Массовая гибель: китообразные, птицы, насекомые. Каскадный коллапс экосистем.'),
+   humans:B('Power grid collapse (<a href="https://en.wikipedia.org/wiki/March_1989_geomagnetic_storm" target="_blank">Quebec 1989</a>, <a href="https://en.wikipedia.org/wiki/Carrington_Event" target="_blank">Carrington 1859</a>). Months to recover. Trillions $ in damage.','Коллапс энергосистем (<a href="https://ru.wikipedia.org/wiki/Магнитная_буря_в_марте_1989_года" target="_blank">Квебек 1989</a>, <a href="https://ru.wikipedia.org/wiki/Событие_Кэррингтона" target="_blank">Каррингтон 1859</a>). Месяцы восстановления. Триллионы $.')}
+]},
+{prod:'differential-protons',ch:null,unit:'',note:B('Differential proton spectrum. Scientific data. Impact thresholds defined via integral channels (>=10 MeV). Switch to "Integral Protons" for S1–S5 scale.','Дифференциальный спектр протонов. Пороги — через интегральные каналы (>=10 MeV). Переключитесь на «Интегральные протоны».'),levels:[]},
+{prod:'differential-electrons',ch:null,unit:'',note:B('Differential electron spectrum. Thresholds via integral channel (>=2 MeV). Switch to "Integral Electrons".','Дифференциальный спектр электронов. Пороги — через интегральный канал (>=2 MeV). Переключитесь на «Интегральные электроны».'),levels:[]},
+{prod:'differential-alphas',ch:null,unit:'',note:B('Differential alpha particle spectrum. No standard biological impact thresholds; fully absorbed by atmosphere.','Дифференциальный спектр альфа-частиц. Стандартных порогов нет; полностью поглощаются атмосферой.'),levels:[]},
+{prod:'euvs',ch:null,unit:'',note:B('Extreme ultraviolet (EUV). Fully absorbed by upper atmosphere (>80 km). No direct surface biological impact.','Экстремальный ультрафиолет (EUV). Полностью поглощается верхней атмосферой (>80 км). Прямого биологического воздействия нет.'),levels:[]},
+];
 
+/* ═══ STATE ═══ */
+const ST={apiData:[],fileData:[],fullSeries:[],fullDomain:null,currentDomain:null,src:'api',preset:'3d',product:'integral-protons',energy:'>=10 MeV',lineColor:'#e7eefc',lineWidth:2.2,lineOpacity:.95,curve:'monotoneX',showPts:false,ptSize:3,showGrid:true,gridOp:.08,showThr:true,yMode:'auto',yMin:null,yMax:null,theme:'dark',sOn:{S1:true,S2:true,S3:true,S4:true,S5:true},timer:null};
 function curProd(){return PRODUCTS.find(p=>p.id===ST.product)||PRODUCTS[0];}
-function sActive(){const p=curProd();return p.sLevels&&ST.energy==='>=10 MeV';}
-
-/* ─────────── DOM ─────────── */
+function sActive(){return curProd().sLevels&&ST.energy==='>=10 MeV';}
 const $=id=>document.getElementById(id);
-const svg=d3.select('#chart'),statusEl=$('status'),dataBadge=$('dataBadge'),
-  productSel=$('productSel'),energySel=$('energySel'),refreshSel=$('refreshSel');
+const svg=d3.select('#chart'),statusEl=$('status'),dataBadge=$('dataBadge'),productSel=$('productSel'),energySel=$('energySel'),refreshSel=$('refreshSel');
 
-/* ─────────── SVG setup ─────────── */
+/* ═══ SVG ═══ */
 const W=1080,H=560,MG={t:18,r:18,b:54,l:78},iW=W-MG.l-MG.r,iH=H-MG.t-MG.b;
 const g=svg.append('g').attr('transform',`translate(${MG.l},${MG.t})`);
 g.append('defs').append('clipPath').attr('id','cA').append('rect').attr('width',iW).attr('height',iH);
 const gB=g.append('g').attr('clip-path','url(#cA)');
 const gG=g.append('g'),gA=g.append('g'),gT=g.append('g');
+const gH=g.append('g').attr('clip-path','url(#cA)');
 const gL=g.append('g').attr('clip-path','url(#cA)');
 const gO=g.append('g'),gBr=g.append('g');
 const xS=d3.scaleUtc().range([0,iW]);
 let yS=d3.scaleLog().range([iH,0]).clamp(true);
 const fU=d3.utcFormat('%Y-%m-%d %H:%M UTC'),fN=d3.format('.4~g');
 
-/* ══════════ PARSING ══════════ */
-
-function parseApiRows(raw, prod){
-  if(prod.special==='mag') return parseMag(raw);
-  return raw.map(d=>{
-    const tt=d.time_tag;
-    const ch=prod.chField?(d[prod.chField]||'').toString().trim():'value';
-    const fx=d[prod.vField];
-    return{t:tt?new Date(tt):null, energy:ch, v:fx==null||fx===''?NaN:+fx};
-  }).filter(d=>d.t instanceof Date&&!isNaN(d.t));
+/* ═══ PARSING ═══ */
+function parseApiRows(raw,prod){
+  if(prod.special==='mag'){const comps=['He','Hp','Hn','total'],rows=[];for(const d of raw){const tt=d.time_tag?new Date(d.time_tag):null;if(!tt||isNaN(tt))continue;for(const c of comps){if(d[c]!=null)rows.push({t:tt,energy:c,v:+d[c]});}}return rows;}
+  return raw.map(d=>{const tt=d.time_tag;const ch=prod.chField?(d[prod.chField]||'').toString().trim():'value';const fx=d[prod.vField];return{t:tt?new Date(tt):null,energy:ch,v:fx==null||fx===''?NaN:+fx};}).filter(d=>d.t instanceof Date&&!isNaN(d.t));
 }
+function parseGenericJson(raw){return raw.map(d=>{const tt=d.time_tag||d.time||d.timestamp||d.date;const en=(d.energy||d.channel||d.label||d.line||'').toString().trim();const fx=d.flux??d.value??d.pfu??d.flux_pfu??d.fluence??d.background;return{t:tt?new Date(tt):null,energy:en||'value',v:fx==null||fx===''?NaN:+fx};}).filter(d=>d.t instanceof Date&&!isNaN(d.t));}
+function parseCsv(txt){const lines=txt.trim().split('\n');let hi=0;while(hi<lines.length&&/^[#:]/.test(lines[hi].trim()))hi++;if(hi>=lines.length-1)return[];const sep=lines[hi].includes('\t')?'\t':lines[hi].includes(';')?';':',';const hdr=lines[hi].split(sep).map(h=>h.trim().toLowerCase().replace(/"/g,''));const tC=hdr.findIndex(h=>/^(time_tag|time|timestamp|date|datetime|t)$/.test(h));const fC=hdr.findIndex(h=>/^(flux|value|pfu|flux_pfu|proton_flux|fluence|background|v|y|total)$/.test(h));const eC=hdr.findIndex(h=>/^(energy|channel|label|line|e)$/.test(h));const ti=tC<0?0:tC,fi=fC<0?1:fC;return lines.slice(hi+1).map(l=>{const p=l.split(sep).map(s=>s.trim().replace(/"/g,''));if(p.length<=Math.max(ti,fi))return null;const dt=new Date(p[ti]),v=+p[fi];const en=eC>=0&&p[eC]?p[eC]:'value';return{t:dt,energy:en,v};}).filter(d=>d&&d.t instanceof Date&&!isNaN(d.t));}
+function parseSpace(txt){const rows=[];for(const line of txt.trim().split('\n')){if(/^[#:]/.test(line.trim())||!line.trim())continue;const p=line.trim().split(/\s+/);if(p.length<5)continue;const y=+p[0],m=+p[1],d=+p[2];if(y<1970||y>2100||m<1||m>12||d<1||d>31)continue;const hm=p[3].padStart(4,'0');const dt=new Date(Date.UTC(y,m-1,d,+hm.slice(0,2),+hm.slice(2)));for(let i=4;i<p.length;i++){const v=+p[i];if(isFinite(v)&&v>0&&v<1e12){rows.push({t:dt,energy:'value',v});break;}}}return rows;}
+function autoParse(txt,fn){const ext=(fn||'').split('.').pop().toLowerCase();if(ext==='json'||txt.trim()[0]==='['){try{const j=JSON.parse(txt);if(Array.isArray(j))return parseGenericJson(j);}catch(e){}}let r=parseCsv(txt);if(r.length)return r;r=parseSpace(txt);if(r.length)return r;return parseCsv(txt);}
+function pickE(rows,ew,allowNeg){let f=rows.filter(d=>(d.energy||'').toString().trim()===ew).filter(d=>isFinite(d.v)&&(allowNeg||d.v>0)).sort((a,b)=>a.t-b.t);if(!f.length&&rows.length){const es=[...new Set(rows.map(d=>d.energy))];if(es.length===1)f=rows.filter(d=>isFinite(d.v)&&(allowNeg||d.v>0)).sort((a,b)=>a.t-b.t);}return f;}
+function discoverChannels(data){return[...new Set(data.map(d=>d.energy).filter(Boolean))];}
+function populateChannelSel(channels){energySel.innerHTML='';channels.forEach(ch=>{const o=document.createElement('option');o.value=ch;o.textContent=ch;energySel.appendChild(o);});const prod=curProd();if(prod.sLevels&&channels.includes('>=10 MeV')){energySel.value='>=10 MeV';ST.energy='>=10 MeV';}else if(channels.length){energySel.value=channels[0];ST.energy=channels[0];}}
+function ds(data,max){if(data.length<=max)return data;const bs=Math.ceil(data.length/(max/2)),res=[data[0]];for(let i=0;i<data.length;i+=bs){const b=data.slice(i,Math.min(i+bs,data.length));if(!b.length)continue;const mn=b.reduce((a,c)=>a.v<c.v?a:c),mx=b.reduce((a,c)=>a.v>c.v?a:c);if(mn!==mx){mn.t<mx.t?res.push(mn,mx):res.push(mx,mn);}else res.push(mn);}res.push(data[data.length-1]);return res;}
 
-function parseMag(raw){
-  const comps=['He','Hp','Hn','total'],rows=[];
-  for(const d of raw){
-    const tt=d.time_tag?new Date(d.time_tag):null;
-    if(!tt||isNaN(tt))continue;
-    for(const c of comps){if(d[c]!=null)rows.push({t:tt,energy:c,v:+d[c]});}
-  }
-  return rows;
-}
-
-function parseGenericJson(raw){
-  return raw.map(d=>{
-    const tt=d.time_tag||d.time||d.timestamp||d.date;
-    const en=(d.energy||d.channel||d.label||d.line||'').toString().trim();
-    const fx=d.flux??d.value??d.pfu??d.flux_pfu??d.fluence??d.background;
-    return{t:tt?new Date(tt):null,energy:en||'value',v:fx==null||fx===''?NaN:+fx};
-  }).filter(d=>d.t instanceof Date&&!isNaN(d.t));
-}
-
-function parseCsv(txt){
-  const lines=txt.trim().split('\n');
-  let hi=0;
-  while(hi<lines.length&&/^[#:]/.test(lines[hi].trim()))hi++;
-  if(hi>=lines.length-1)return[];
-  const sep=lines[hi].includes('\t')?'\t':lines[hi].includes(';')?';':',';
-  const hdr=lines[hi].split(sep).map(h=>h.trim().toLowerCase().replace(/"/g,''));
-  const tC=hdr.findIndex(h=>/^(time_tag|time|timestamp|date|datetime|t)$/.test(h));
-  const fC=hdr.findIndex(h=>/^(flux|value|pfu|flux_pfu|proton_flux|fluence|background|v|y|total)$/.test(h));
-  const eC=hdr.findIndex(h=>/^(energy|channel|label|line|e)$/.test(h));
-  const ti=tC<0?0:tC,fi=fC<0?1:fC;
-  return lines.slice(hi+1).map(l=>{
-    const p=l.split(sep).map(s=>s.trim().replace(/"/g,''));
-    if(p.length<=Math.max(ti,fi))return null;
-    const dt=new Date(p[ti]),v=+p[fi];
-    const en=eC>=0&&p[eC]?p[eC]:'value';
-    return{t:dt,energy:en,v};
-  }).filter(d=>d&&d.t instanceof Date&&!isNaN(d.t));
-}
-
-function parseSpace(txt){
-  const rows=[];
-  for(const line of txt.trim().split('\n')){
-    if(/^[#:]/.test(line.trim())||!line.trim())continue;
-    const p=line.trim().split(/\s+/);if(p.length<5)continue;
-    const y=+p[0],m=+p[1],d=+p[2];
-    if(y<1970||y>2100||m<1||m>12||d<1||d>31)continue;
-    const hm=p[3].padStart(4,'0');
-    const dt=new Date(Date.UTC(y,m-1,d,+hm.slice(0,2),+hm.slice(2)));
-    for(let i=4;i<p.length;i++){const v=+p[i];if(isFinite(v)&&v>0&&v<1e12){rows.push({t:dt,energy:'value',v});break;}}
-  }
-  return rows;
-}
-
-function autoParse(txt,fn){
-  const ext=(fn||'').split('.').pop().toLowerCase();
-  if(ext==='json'||txt.trim()[0]==='['){try{const j=JSON.parse(txt);if(Array.isArray(j))return parseGenericJson(j);}catch(e){}}
-  let r=parseCsv(txt);if(r.length)return r;
-  r=parseSpace(txt);if(r.length)return r;
-  return parseCsv(txt);
-}
-
-function pickE(rows,ew,allowNeg){
-  let f=rows.filter(d=>(d.energy||'').toString().trim()===ew).filter(d=>isFinite(d.v)&&(allowNeg||d.v>0)).sort((a,b)=>a.t-b.t);
-  if(!f.length&&rows.length){
-    const es=[...new Set(rows.map(d=>d.energy))];
-    if(es.length===1)f=rows.filter(d=>isFinite(d.v)&&(allowNeg||d.v>0)).sort((a,b)=>a.t-b.t);
-  }
-  return f;
-}
-
-function discoverChannels(data){
-  return[...new Set(data.map(d=>d.energy).filter(Boolean))];
-}
-
-function populateChannelSel(channels){
-  energySel.innerHTML='';
-  channels.forEach(ch=>{
-    const o=document.createElement('option');o.value=ch;o.textContent=ch;
-    energySel.appendChild(o);
-  });
-  const prod=curProd();
-  if(prod.sLevels&&channels.includes('>=10 MeV')){energySel.value='>=10 MeV';ST.energy='>=10 MeV';}
-  else if(channels.length){energySel.value=channels[0];ST.energy=channels[0];}
-}
-
-/* ─────────── downsample ─────────── */
-function ds(data,max){
-  if(data.length<=max)return data;
-  const bs=Math.ceil(data.length/(max/2)),res=[data[0]];
-  for(let i=0;i<data.length;i+=bs){
-    const b=data.slice(i,Math.min(i+bs,data.length));if(!b.length)continue;
-    const mn=b.reduce((a,c)=>a.v<c.v?a:c),mx=b.reduce((a,c)=>a.v>c.v?a:c);
-    if(mn!==mx){mn.t<mx.t?res.push(mn,mx):res.push(mx,mn);}else res.push(mn);
-  }
-  res.push(data[data.length-1]);return res;
-}
-
-/* ─────────── domain helpers ─────────── */
-function clampD(dom){
-  if(!ST.fullDomain)return dom;
-  const a=new Date(Math.max(+dom[0],+ST.fullDomain[0])),b=new Date(Math.min(+dom[1],+ST.fullDomain[1]));
-  return+a>=+b?ST.fullDomain:[a,b];
-}
+/* ═══ DOMAIN HELPERS ═══ */
+function clampD(dom){if(!ST.fullDomain)return dom;const a=new Date(Math.max(+dom[0],+ST.fullDomain[0])),b=new Date(Math.min(+dom[1],+ST.fullDomain[1]));return+a>=+b?ST.fullDomain:[a,b];}
 const pad2=n=>String(n).padStart(2,'0');
-function setInputs(dom){
-  $('startDate').value=`${dom[0].getFullYear()}-${pad2(dom[0].getMonth()+1)}-${pad2(dom[0].getDate())}`;
-  $('startTime').value=`${pad2(dom[0].getHours())}:${pad2(dom[0].getMinutes())}`;
-  $('endDate').value=`${dom[1].getFullYear()}-${pad2(dom[1].getMonth()+1)}-${pad2(dom[1].getDate())}`;
-  $('endTime').value=`${pad2(dom[1].getHours())}:${pad2(dom[1].getMinutes())}`;
-}
-function getInputDom(){
-  const sd=$('startDate').value,st=$('startTime').value||'00:00',ed=$('endDate').value,et=$('endTime').value||'23:59';
-  if(!sd||!ed)return null;
-  const a=new Date(`${sd}T${st}`),b=new Date(`${ed}T${et}`);
-  return(isNaN(a)||isNaN(b)||+a>=+b)?null:[a,b];
-}
+function setInputs(dom){$('startDate').value=`${dom[0].getFullYear()}-${pad2(dom[0].getMonth()+1)}-${pad2(dom[0].getDate())}`;$('startTime').value=`${pad2(dom[0].getHours())}:${pad2(dom[0].getMinutes())}`;$('endDate').value=`${dom[1].getFullYear()}-${pad2(dom[1].getMonth()+1)}-${pad2(dom[1].getDate())}`;$('endTime').value=`${pad2(dom[1].getHours())}:${pad2(dom[1].getMinutes())}`;}
+function getInputDom(){const sd=$('startDate').value,st=$('startTime').value||'00:00',ed=$('endDate').value,et=$('endTime').value||'23:59';if(!sd||!ed)return null;const a=new Date(`${sd}T${st}`),b=new Date(`${ed}T${et}`);return(isNaN(a)||isNaN(b)||+a>=+b)?null:[a,b];}
+function tc(){const dk=ST.theme==='dark';return{txt:dk?'rgba(231,238,252,0.85)':'rgba(26,26,46,0.85)',ax:dk?'rgba(255,255,255,0.25)':'rgba(0,0,0,0.25)',tl:dk?'rgba(255,255,255,0.22)':'rgba(0,0,0,0.18)',tt:dk?'rgba(231,238,252,0.70)':'rgba(26,26,46,0.65)',ch:dk?'rgba(255,255,255,0.25)':'rgba(0,0,0,0.20)',tbg:dk?'rgba(17,24,42,0.96)':'rgba(255,255,255,0.96)',tbr:dk?'rgba(255,255,255,0.10)':'rgba(0,0,0,0.10)',t1:dk?'rgba(231,238,252,0.95)':'rgba(26,26,46,0.95)',t2:dk?'rgba(159,176,208,0.95)':'rgba(107,114,128,0.95)'};}
 
-/* ─────────── theme colors ─────────── */
-function tc(){
-  const dk=ST.theme==='dark';
-  return{
-    txt:dk?'rgba(231,238,252,0.85)':'rgba(26,26,46,0.85)',
-    ax:dk?'rgba(255,255,255,0.25)':'rgba(0,0,0,0.25)',
-    tl:dk?'rgba(255,255,255,0.22)':'rgba(0,0,0,0.18)',
-    tt:dk?'rgba(231,238,252,0.70)':'rgba(26,26,46,0.65)',
-    ch:dk?'rgba(255,255,255,0.25)':'rgba(0,0,0,0.20)',
-    tbg:dk?'rgba(17,24,42,0.96)':'rgba(255,255,255,0.96)',
-    tbr:dk?'rgba(255,255,255,0.10)':'rgba(0,0,0,0.10)',
-    t1:dk?'rgba(231,238,252,0.95)':'rgba(26,26,46,0.95)',
-    t2:dk?'rgba(159,176,208,0.95)':'rgba(107,114,128,0.95)'
-  };
-}
+/* ═══ S-INTERVALS ═══ */
+function sIntervals(ser){const out={S1:[],S2:[],S3:[],S4:[],S5:[]};if(!ser.length)return out;const lvOf=v=>{for(let i=SL.length-1;i>=0;i--)if(v>=SL[i].thr)return SL[i].id;return null;};let cur=null;for(let i=0;i<ser.length;i++){const id=lvOf(ser[i].v);if(!id){if(cur){out[cur.id].push({a:cur.s,b:ser[i-1].t});cur=null;}continue;}if(!cur)cur={id,s:ser[i].t};else if(cur.id!==id){out[cur.id].push({a:cur.s,b:ser[i-1].t});cur={id,s:ser[i].t};}}if(cur)out[cur.id].push({a:cur.s,b:ser[ser.length-1].t});return out;}
+function lvLabel(v){if(!sActive())return'';for(let i=SL.length-1;i>=0;i--)if(v>=SL[i].thr)return'  '+SL[i].id;return'  <S1';}
 
-/* ─────────── s-intervals ─────────── */
-function sIntervals(ser){
-  const out={S1:[],S2:[],S3:[],S4:[],S5:[]};if(!ser.length)return out;
-  const lvOf=v=>{for(let i=SL.length-1;i>=0;i--)if(v>=SL[i].thr)return SL[i].id;return null;};
-  let cur=null;
-  for(let i=0;i<ser.length;i++){
-    const id=lvOf(ser[i].v);
-    if(!id){if(cur){out[cur.id].push({a:cur.s,b:ser[i-1].t});cur=null;}continue;}
-    if(!cur)cur={id,s:ser[i].t};
-    else if(cur.id!==id){out[cur.id].push({a:cur.s,b:ser[i-1].t});cur={id,s:ser[i].t};}
+/* ═══ BIO HELPERS ═══ */
+function curBioEntry(){const p=curProd();return BIO.find(b=>b.prod===p.id&&(b.ch===null||b.ch===ST.energy))||BIO.find(b=>b.prod===p.id)||null;}
+function curBioLevels(){const e=curBioEntry();return e?e.levels:[];}
+
+function highlightBio(idx){
+  gH.selectAll('*').remove();
+  const levels=curBioLevels();
+  if(idx<0||idx>=levels.length)return;
+  const lv=levels[idx];
+  if(lv.v==null||!ST.currentDomain)return;
+  const y2=yS(lv.v);
+  let y1;
+  if(idx+1<levels.length&&levels[idx+1].v!=null)y1=yS(levels[idx+1].v);
+  else y1=0;
+  gH.append('rect').attr('x',0).attr('y',Math.min(y1,y2)).attr('width',iW).attr('height',Math.abs(y2-y1)).attr('fill',lv.color).attr('fill-opacity',.22);
+  gH.append('line').attr('x1',0).attr('x2',iW).attr('y1',y2).attr('y2',y2).attr('stroke',lv.color).attr('stroke-width',2.5).attr('stroke-opacity',.8);
+}
+function unhighlightBio(){gH.selectAll('*').remove();}
+
+function renderBioPanel(){
+  const el=$('bioContent');const entry=curBioEntry();
+  if(!entry||!entry.levels.length){
+    let msg=entry&&entry.note?t(entry.note):(L==='ru'?'Для этого продукта/канала пороги не определены.':'No thresholds defined for this product/channel.');
+    el.innerHTML=`<div class="bio-none">${msg}</div>`;return;
   }
-  if(cur)out[cur.id].push({a:cur.s,b:ser[ser.length-1].t});
-  return out;
-}
-function lvLabel(v){
-  if(!sActive())return'';
-  for(let i=SL.length-1;i>=0;i--)if(v>=SL[i].thr)return'  '+SL[i].id;
-  return'  <S1';
+  const wikiUrl=entry.wiki?t(entry.wiki):'';
+  let h=entry.note?`<div style="font-size:11px;color:var(--muted);margin-bottom:8px">${t(entry.note)}${wikiUrl?' <a href="'+wikiUrl+'" target="_blank" class="bio-wiki">📖 Wiki</a>':''}</div>`:'';
+  h+=`<table class="bio-tbl"><thead><tr><th style="width:90px">${t(I18.tblThreshold)}</th><th style="width:100px">${t(I18.tblSeverity)}</th><th>${t(I18.tblFlora)}</th><th>${t(I18.tblFauna)}</th><th>${t(I18.tblHumans)}</th></tr></thead><tbody>`;
+  entry.levels.forEach((lv,i)=>{
+    const val=lv.v!=null?(lv.v<0.01?lv.v.toExponential(1):lv.v)+' '+entry.unit:'—';
+    h+=`<tr class="bio-row" data-idx="${i}"><td><span class="bio-dot" style="background:${lv.color}"></span><strong>${t(lv.id)}</strong><br><span class="mono" style="font-size:10px;color:var(--muted)">${val}</span></td><td><span class="bio-sev" style="color:${lv.color}">${t(lv.sev)}</span></td><td>${t(lv.flora)}</td><td>${t(lv.fauna)}</td><td>${t(lv.humans)}</td></tr>`;
+  });
+  h+='</tbody></table>';
+  el.innerHTML=h;
+  el.querySelectorAll('.bio-row').forEach(row=>{
+    const idx=+row.dataset.idx;
+    row.addEventListener('mouseenter',()=>highlightBio(idx));
+    row.addEventListener('mouseleave',unhighlightBio);
+  });
 }
 
-/* ══════════ RENDER ══════════ */
+/* ═══ RENDER ═══ */
 function render(){
-  gB.selectAll('*').remove();gG.selectAll('*').remove();gA.selectAll('*').remove();
-  gT.selectAll('*').remove();gL.selectAll('*').remove();gO.selectAll('*').remove();gBr.selectAll('*').remove();
-  if(!ST.fullSeries.length||!ST.currentDomain){statusEl.textContent='Нет данных.';$('pointInfo').textContent='';return;}
-
-  const prod=curProd();
-  const useLog=prod.logY;
-  const allowNeg=!useLog;
-
+  gB.selectAll('*').remove();gG.selectAll('*').remove();gA.selectAll('*').remove();gT.selectAll('*').remove();gH.selectAll('*').remove();gL.selectAll('*').remove();gO.selectAll('*').remove();gBr.selectAll('*').remove();
+  if(!ST.fullSeries.length||!ST.currentDomain){statusEl.textContent=t(I18.noData);$('pointInfo').textContent='';return;}
+  const prod=curProd(),useLog=prod.logY;
   const raw=ST.fullSeries.filter(d=>d.t>=ST.currentDomain[0]&&d.t<=ST.currentDomain[1]);
-  if(!raw.length){statusEl.textContent='В выбранном диапазоне нет точек.';return;}
-
-  const ser=ds(raw,3000);
-  const c=tc();
-
+  if(!raw.length){statusEl.textContent=t(I18.noPoints);return;}
+  const ser=ds(raw,3000);const c=tc();
   xS.domain(ST.currentDomain);
-
-  /* Y scale — log or linear depending on product */
   let yMin,yMax;
-  if(useLog){
-    yS=d3.scaleLog().range([iH,0]).clamp(true);
-    if(ST.yMode==='manual'&&ST.yMin!=null&&ST.yMax!=null){yMin=Math.max(1e-12,ST.yMin);yMax=Math.max(yMin*10,ST.yMax);}
-    else if(ST.yMode==='full'){yMin=1e-3;yMax=1e6;}
-    else{const mn=d3.min(raw,d=>d.v),mx=d3.max(raw,d=>d.v);yMin=Math.max(1e-12,mn*.8);yMax=Math.max(yMin*10,mx*1.2);}
-  }else{
-    yS=d3.scaleLinear().range([iH,0]);
-    if(ST.yMode==='manual'&&ST.yMin!=null&&ST.yMax!=null){yMin=ST.yMin;yMax=ST.yMax;}
-    else{const mn=d3.min(raw,d=>d.v),mx=d3.max(raw,d=>d.v);const pad=(mx-mn)*0.1||1;yMin=mn-pad;yMax=mx+pad;}
-  }
+  if(useLog){yS=d3.scaleLog().range([iH,0]).clamp(true);if(ST.yMode==='manual'&&ST.yMin!=null&&ST.yMax!=null){yMin=Math.max(1e-12,ST.yMin);yMax=Math.max(yMin*10,ST.yMax);}else if(ST.yMode==='full'){yMin=1e-3;yMax=1e6;}else{const mn=d3.min(raw,d=>d.v),mx=d3.max(raw,d=>d.v);yMin=Math.max(1e-12,mn*.8);yMax=Math.max(yMin*10,mx*1.2);}}
+  else{yS=d3.scaleLinear().range([iH,0]);if(ST.yMode==='manual'&&ST.yMin!=null&&ST.yMax!=null){yMin=ST.yMin;yMax=ST.yMax;}else{const mn=d3.min(raw,d=>d.v),mx=d3.max(raw,d=>d.v);const pd=(mx-mn)*0.1||1;yMin=mn-pd;yMax=mx+pd;}}
   yS.domain([yMin,yMax]);
 
-  /* S bands */
-  if(sActive()){
-    const iv=sIntervals(raw),bd=[];
-    Object.keys(iv).forEach(id=>{if(!ST.sOn[id])return;iv[id].forEach(s=>bd.push({id,a:s.a,b:s.b}));});
-    gB.selectAll('rect').data(bd).enter().append('rect')
-      .attr('x',d=>xS(d.a)).attr('y',0)
-      .attr('width',d=>Math.max(1,xS(d.b)-xS(d.a))).attr('height',iH)
-      .attr('fill',d=>SF[d.id]).attr('stroke',d=>SS[d.id]).attr('stroke-width',1);
-  }
+  if(sActive()){const iv=sIntervals(raw),bd=[];Object.keys(iv).forEach(id=>{if(!ST.sOn[id])return;iv[id].forEach(s=>bd.push({id,a:s.a,b:s.b}));});gB.selectAll('rect').data(bd).enter().append('rect').attr('x',d=>xS(d.a)).attr('y',0).attr('width',d=>Math.max(1,xS(d.b)-xS(d.a))).attr('height',iH).attr('fill',d=>SF[d.id]).attr('stroke',d=>SS[d.id]).attr('stroke-width',1);}
+  if(ST.showGrid){const yt=useLog?yS.ticks(9).filter(t=>t>0):yS.ticks(10);gG.selectAll('line').data(yt).enter().append('line').attr('x1',0).attr('x2',iW).attr('y1',d=>yS(d)).attr('y2',d=>yS(d)).attr('stroke',ST.theme==='dark'?'#fff':'#000').attr('stroke-opacity',ST.gridOp);}
 
-  /* grid */
-  if(ST.showGrid){
-    const yt=useLog?yS.ticks(9).filter(t=>t>0):yS.ticks(10);
-    gG.selectAll('line').data(yt).enter().append('line')
-      .attr('x1',0).attr('x2',iW).attr('y1',d=>yS(d)).attr('y2',d=>yS(d))
-      .attr('stroke',ST.theme==='dark'?'#fff':'#000').attr('stroke-opacity',ST.gridOp);
-  }
+  const spanD=(ST.currentDomain[1]-ST.currentDomain[0])/864e5;let tFmt,tN;
+  if(spanD<=1){tFmt=d3.utcFormat('%H:%M');tN=8;}else if(spanD<=7){tFmt=d3.utcFormat('%m-%d %H:%M');tN=6;}else if(spanD<=90){tFmt=d3.utcFormat('%Y-%m-%d');tN=7;}else if(spanD<=730){tFmt=d3.utcFormat('%Y-%m');tN=8;}else{tFmt=d3.utcFormat('%Y');tN=8;}
 
-  /* tick format */
-  const spanD=(ST.currentDomain[1]-ST.currentDomain[0])/864e5;
-  let tFmt,tN;
-  if(spanD<=1){tFmt=d3.utcFormat('%H:%M');tN=8;}
-  else if(spanD<=7){tFmt=d3.utcFormat('%m-%d %H:%M');tN=6;}
-  else if(spanD<=90){tFmt=d3.utcFormat('%Y-%m-%d');tN=7;}
-  else if(spanD<=730){tFmt=d3.utcFormat('%Y-%m');tN=8;}
-  else{tFmt=d3.utcFormat('%Y');tN=8;}
+  gA.append('g').attr('transform',`translate(0,${iH})`).call(d3.axisBottom(xS).ticks(tN).tickFormat(tFmt)).call(s=>{s.selectAll('text').attr('fill',c.txt).attr('font-size',11);s.selectAll('path,line').attr('stroke',c.ax);});
+  gA.append('g').call(useLog?d3.axisLeft(yS).ticks(9,'~g'):d3.axisLeft(yS).ticks(10)).call(s=>{s.selectAll('text').attr('fill',c.txt).attr('font-size',11);s.selectAll('path,line').attr('stroke',c.ax);});
+  gA.append('text').attr('transform','rotate(-90)').attr('x',-iH/2).attr('y',-58).attr('text-anchor','middle').attr('fill',c.tt).attr('font-size',12).text(prod.unit);
 
-  /* axes */
-  gA.append('g').attr('transform',`translate(0,${iH})`).call(d3.axisBottom(xS).ticks(tN).tickFormat(tFmt))
-    .call(s=>{s.selectAll('text').attr('fill',c.txt).attr('font-size',11);s.selectAll('path,line').attr('stroke',c.ax);});
-  const yAxisGen=useLog?d3.axisLeft(yS).ticks(9,'~g'):d3.axisLeft(yS).ticks(10);
-  gA.append('g').call(yAxisGen)
-    .call(s=>{s.selectAll('text').attr('fill',c.txt).attr('font-size',11);s.selectAll('path,line').attr('stroke',c.ax);});
-  gA.append('text').attr('transform','rotate(-90)').attr('x',-iH/2).attr('y',-58)
-    .attr('text-anchor','middle').attr('fill',c.tt).attr('font-size',12).text(prod.unit);
+  if(ST.showThr){const bio=curBioLevels().filter(d=>d.v!=null&&d.v>=yS.domain()[0]&&d.v<=yS.domain()[1]);const tg=gT.selectAll('g').data(bio).enter().append('g');tg.append('line').attr('x1',0).attr('x2',iW).attr('y1',d=>yS(d.v)).attr('y2',d=>yS(d.v)).attr('stroke',d=>d.color||c.tl).attr('stroke-opacity',.55).attr('stroke-dasharray','6,4').attr('stroke-width',1.5);tg.append('text').attr('x',iW-6).attr('y',d=>yS(d.v)-5).attr('text-anchor','end').attr('fill',d=>d.color||c.tt).attr('font-size',11).attr('font-weight',600).text(d=>`${t(d.id)}: ${d.v<0.01?d.v.toExponential(0):d.v} ${prod.unit}`);}
 
-  /* threshold lines (only integral protons >=10 MeV) */
-  if(ST.showThr&&sActive()){
-    const th=SL.map(d=>({n:d.id,v:d.thr})).filter(d=>d.v>=yS.domain()[0]&&d.v<=yS.domain()[1]);
-    const tg=gT.selectAll('g').data(th).enter().append('g');
-    tg.append('line').attr('x1',0).attr('x2',iW).attr('y1',d=>yS(d.v)).attr('y2',d=>yS(d.v))
-      .attr('stroke',c.tl).attr('stroke-dasharray','6,6');
-    tg.append('text').attr('x',iW-6).attr('y',d=>yS(d.v)-6).attr('text-anchor','end')
-      .attr('fill',c.tt).attr('font-size',12).text(d=>`${d.n}: ${d.v} pfu`);
-  }
+  const cf=CURVES[ST.curve]||d3.curveMonotoneX;const lineGen=d3.line().x(d=>xS(d.t)).y(d=>yS(d.v)).curve(cf);if(useLog)lineGen.defined(d=>d.v>0);
+  gL.append('path').datum(ser).attr('fill','none').attr('stroke',ST.lineColor).attr('stroke-width',ST.lineWidth).attr('stroke-opacity',ST.lineOpacity).attr('d',lineGen);
+  if(ST.showPts&&ser.length<2000){gL.selectAll('circle').data(ser.filter(d=>!useLog||d.v>0)).enter().append('circle').attr('cx',d=>xS(d.t)).attr('cy',d=>yS(d.v)).attr('r',ST.ptSize).attr('fill',ST.lineColor).attr('fill-opacity',ST.lineOpacity*.7);}
 
-  /* line */
-  const cf=CURVES[ST.curve]||d3.curveMonotoneX;
-  const lineGen=d3.line().x(d=>xS(d.t)).y(d=>yS(d.v)).curve(cf);
-  if(useLog) lineGen.defined(d=>d.v>0);
-  gL.append('path').datum(ser).attr('fill','none')
-    .attr('stroke',ST.lineColor).attr('stroke-width',ST.lineWidth).attr('stroke-opacity',ST.lineOpacity)
-    .attr('d',lineGen);
-
-  /* points */
-  if(ST.showPts&&ser.length<2000){
-    gL.selectAll('circle').data(ser.filter(d=>!useLog||d.v>0)).enter().append('circle')
-      .attr('cx',d=>xS(d.t)).attr('cy',d=>yS(d.v)).attr('r',ST.ptSize)
-      .attr('fill',ST.lineColor).attr('fill-opacity',ST.lineOpacity*.7);
-  }
-
-  /* tooltip */
   const ov=gO.append('rect').attr('width',iW).attr('height',iH).attr('fill','transparent');
-  const tip=gO.append('g').style('display','none');
-  tip.append('line').attr('y1',0).attr('y2',iH).attr('stroke',c.ch).attr('stroke-dasharray','4,4');
+  const tip=gO.append('g').style('display','none');tip.append('line').attr('y1',0).attr('y2',iH).attr('stroke',c.ch).attr('stroke-dasharray','4,4');
   const tDot=tip.append('circle').attr('r',4).attr('fill',ST.lineColor).attr('stroke',c.tbg).attr('stroke-width',2);
-  const tBox=tip.append('g');
-  tBox.append('rect').attr('rx',10).attr('ry',10).attr('fill',c.tbg).attr('stroke',c.tbr);
-  const t1=tBox.append('text').attr('fill',c.t1).attr('font-size',13);
-  const t2=tBox.append('text').attr('fill',c.t2).attr('font-size',12);
+  const tBox=tip.append('g');tBox.append('rect').attr('rx',10).attr('ry',10).attr('fill',c.tbg).attr('stroke',c.tbr);
+  const t1=tBox.append('text').attr('fill',c.t1).attr('font-size',13),t2=tBox.append('text').attr('fill',c.t2).attr('font-size',12);
   const bis=d3.bisector(d=>d.t).left;
+  function showTip(ev){const[mx]=d3.pointer(ev,ov.node()),t0=xS.invert(mx);const i=Math.min(raw.length-1,Math.max(0,bis(raw,t0))),d=raw[i];tip.style('display',null);const px=xS(d.t),py=yS(d.v);tip.select('line').attr('x1',px).attr('x2',px);tDot.attr('cx',px).attr('cy',py);const l1=`${ST.energy}  ${fN(d.v)} ${prod.unit}${lvLabel(d.v)}`,l2=fU(d.t);t1.text(l1).attr('x',12).attr('y',20);t2.text(l2).attr('x',12).attr('y',40);const w=Math.max(260,l1.length*7.2),h=54;const xP=px>iW*.6?px-w-18:px+18,yP=Math.min(iH-h-10,Math.max(10,py-h/2));tBox.attr('transform',`translate(${xP},${yP})`);tBox.select('rect').attr('width',w).attr('height',h);}
+  ov.on('pointerenter',()=>tip.style('display',null)).on('pointermove',showTip).on('pointerleave',()=>tip.style('display','none'));
+  gBr.call(d3.brushX().extent([[0,0],[iW,iH]]).on('end',ev=>{if(!ev.selection)return;ST.currentDomain=[xS.invert(ev.selection[0]),xS.invert(ev.selection[1])];setInputs(ST.currentDomain);render();}));
 
-  function showTip(ev){
-    const[mx]=d3.pointer(ev,ov.node()),t0=xS.invert(mx);
-    const i=Math.min(raw.length-1,Math.max(0,bis(raw,t0))),d=raw[i];
-    tip.style('display',null);
-    const px=xS(d.t),py=yS(d.v);
-    tip.select('line').attr('x1',px).attr('x2',px);
-    tDot.attr('cx',px).attr('cy',py);
-    const l1=`${ST.energy}  ${fN(d.v)} ${prod.unit}${lvLabel(d.v)}`,l2=fU(d.t);
-    t1.text(l1).attr('x',12).attr('y',20);t2.text(l2).attr('x',12).attr('y',40);
-    const w=Math.max(260,l1.length*7.2),h=54;
-    const xP=px>iW*.6?px-w-18:px+18,yP=Math.min(iH-h-10,Math.max(10,py-h/2));
-    tBox.attr('transform',`translate(${xP},${yP})`);
-    tBox.select('rect').attr('width',w).attr('height',h);
-  }
-  ov.on('pointerenter',()=>tip.style('display',null))
-    .on('pointermove',showTip)
-    .on('pointerleave',()=>tip.style('display','none'));
-
-  /* brush */
-  gBr.call(d3.brushX().extent([[0,0],[iW,iH]]).on('end',ev=>{
-    if(!ev.selection)return;
-    ST.currentDomain=[xS.invert(ev.selection[0]),xS.invert(ev.selection[1])];
-    setInputs(ST.currentDomain);render();
-  }));
-
-  /* status */
   const tMin=raw[0].t,tMax=raw[raw.length-1].t,last=raw[raw.length-1];
-  statusEl.innerHTML=
-    `Продукт: <span class="mono">${prod.label}</span>, канал: <span class="mono">${ST.energy}</span>, точек: <span class="mono">${raw.length}</span>`+
-    (ser.length<raw.length?` (отрисовано: ${ser.length})`:'')+`<br>`+
-    `Окно: <span class="mono">${fU(tMin)}</span> → <span class="mono">${fU(tMax)}</span><br>`+
-    `Последнее: <span class="mono">${fN(last.v)} ${prod.unit}</span> @ <span class="mono">${fU(last.t)}</span>`+
-    (sActive()?` (${lvLabel(last.v).trim()})`:'');
-  $('pointInfo').innerHTML=
-    `Всего в наборе: <span class="mono">${ST.fullSeries.length}</span> · `+
-    `Источник: <span class="badge ${ST.src}">${ST.src==='api'?'LIVE':'FILE'}</span>`;
+  statusEl.innerHTML=`${t(I18.prodPts)}: <span class="mono">${t(prod.label)}</span>, ${t(I18.chanPts)}: <span class="mono">${ST.energy}</span>, ${t(I18.ptsPts)}: <span class="mono">${raw.length}</span>`+(ser.length<raw.length?` (${t(I18.drawn)}: ${ser.length})`:'')+`<br>${t(I18.window)}: <span class="mono">${fU(tMin)}</span> → <span class="mono">${fU(tMax)}</span><br>${t(I18.last)}: <span class="mono">${fN(last.v)} ${prod.unit}</span> @ <span class="mono">${fU(last.t)}</span>`+(sActive()?` (${lvLabel(last.v).trim()})`:'');
+  $('pointInfo').innerHTML=`${t(I18.totalInSet)}: <span class="mono">${ST.fullSeries.length}</span> · ${t(I18.source)}: <span class="badge ${ST.src}">${ST.src==='api'?'LIVE':'FILE'}</span>`;
 }
 
-/* ─────────── data flow ─────────── */
-function updateFromSrc(){
-  const src=ST.src==='file'?ST.fileData:ST.apiData;
-  const prod=curProd();
-  ST.fullSeries=pickE(src,ST.energy,!prod.logY);
-  if(!ST.fullSeries.length){ST.fullDomain=null;ST.currentDomain=null;render();return;}
-  ST.fullDomain=d3.extent(ST.fullSeries,d=>d.t);
-  ST.currentDomain=ST.currentDomain?clampD(ST.currentDomain):ST.fullDomain;
-  setInputs(ST.currentDomain);updSCtrl();render();
+/* ═══ DATA FLOW ═══ */
+function updateFromSrc(){const src=ST.src==='file'?ST.fileData:ST.apiData;ST.fullSeries=pickE(src,ST.energy,!curProd().logY);if(!ST.fullSeries.length){ST.fullDomain=null;ST.currentDomain=null;render();return;}ST.fullDomain=d3.extent(ST.fullSeries,d=>d.t);ST.currentDomain=ST.currentDomain?clampD(ST.currentDomain):ST.fullDomain;setInputs(ST.currentDomain);updSCtrl();renderBioPanel();render();}
+function resolveRange(desired){const prod=curProd();return prod.ranges.includes(desired)?desired:prod.ranges[prod.ranges.length-1];}
+async function loadLive(apiR){const prod=curProd();const ar=resolveRange(apiR);ST.src='api';dataBadge.textContent='LIVE';dataBadge.className='badge live';statusEl.textContent=t(I18.loading);try{const r=await fetch(`https://services.swpc.noaa.gov/json/goes/primary/${prod.id}-${ar}.json?_=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);ST.apiData=parseApiRows(await r.json(),prod);populateChannelSel(discoverChannels(ST.apiData));ST.currentDomain=null;renderBioPanel();updateFromSrc();}catch(e){statusEl.textContent=`${t(I18.error)}: ${e.message}`;}updLivePresetState();updHighlight();}
+function loadFileView(data,fn){ST.fileData=data;ST.src='file';ST.currentDomain=null;dataBadge.textContent='FILE';dataBadge.className='badge file';const channels=discoverChannels(data);populateChannelSel(channels);const dom=d3.extent(data.filter(d=>d.t),d=>d.t);$('fileInfo').innerHTML=`${t(I18.file)}: <span class="mono">${fn||'imported'}</span><br>${t(I18.records)}: <span class="mono">${data.length}</span><br>${t(I18.window)}: <span class="mono">${dom[0]?fU(dom[0]):'?'}</span> → <span class="mono">${dom[1]?fU(dom[1]):'?'}</span>`;updateFromSrc();updFilePr();updHighlight();}
+
+/* ═══ UI BUILD ═══ */
+function buildLP(){const c=$('livePresets');LIVE_P.forEach(p=>{const b=document.createElement('button');b.className='pbtn';b.textContent=p.l;b.dataset.range=p.r;b.addEventListener('click',()=>{ST.preset=p.l;loadLive(p.r);});c.appendChild(b);});}
+function updLivePresetState(){const prod=curProd();document.querySelectorAll('#livePresets .pbtn').forEach(b=>{b.classList.toggle('disabled',!prod.ranges.includes(b.dataset.range));});}
+function buildFP(){const c=$('filePresets');FILE_P.forEach((p,i)=>{const b=document.createElement('button');b.className='pbtn nf';b.textContent=fpLabel(p);b.dataset.days=p.d;b.addEventListener('click',()=>{if(!ST.fileData.length){statusEl.textContent=t(I18.nceiNeedFile);$('nceiPanel').open=true;return;}const prod=curProd();ST.src='file';ST.preset=fpLabel(p);dataBadge.textContent='FILE';dataBadge.className='badge file';const fs=pickE(ST.fileData,ST.energy,!prod.logY);if(!fs.length)return;ST.fullSeries=fs;ST.fullDomain=d3.extent(fs,d=>d.t);const end=d3.max(fs,d=>d.t),start=new Date(+end-p.d*864e5);ST.currentDomain=clampD([start,end]);setInputs(ST.currentDomain);updSCtrl();render();updHighlight();});c.appendChild(b);});}
+function updFilePr(){document.querySelectorAll('.pbtn.nf').forEach(b=>b.classList.toggle('hd',ST.fileData.length>0));}
+function updHighlight(){document.querySelectorAll('.pbtn').forEach(b=>b.classList.toggle('active',b.textContent===ST.preset));}
+function buildSC(){const el=$('sLevelControls');el.innerHTML='';SL.forEach(lv=>{const w=document.createElement('div');w.className='sbox';const cb=document.createElement('input');cb.type='checkbox';cb.checked=!!ST.sOn[lv.id];cb.addEventListener('change',()=>{ST.sOn[lv.id]=cb.checked;render();saveSt();});const dot=document.createElement('span');dot.style.cssText=`display:inline-block;width:9px;height:9px;border-radius:9px;background:${SS[lv.id]}`;const lab=document.createElement('span');lab.textContent=`${lv.id} (≥${lv.thr})`;lab.style.fontSize='11px';w.appendChild(cb);w.appendChild(dot);w.appendChild(lab);el.appendChild(w);});}
+function updSCtrl(){const show=sActive();$('sLevelChip').style.opacity=show?'1':'.35';$('sLevelControls').querySelectorAll('input[type=checkbox]').forEach(c=>c.disabled=!show);}
+function handleFile(f){statusEl.textContent=`${t(I18.reading)}: ${f.name}…`;const r=new FileReader();r.onload=()=>{try{const d=autoParse(r.result,f.name);if(!d.length){statusEl.textContent=t(I18.badFormat);return;}loadFileView(d,f.name);}catch(e){statusEl.textContent=`${t(I18.error)}: ${e.message}`;}};r.readAsText(f);}
+
+/* ═══ EXPORT ═══ */
+function exportPng(){const svgEl=$('chart'),svgData=new XMLSerializer().serializeToString(svgEl);const canvas=document.createElement('canvas');const sc=2;canvas.width=W*sc;canvas.height=H*sc;const ctx=canvas.getContext('2d');ctx.fillStyle=ST.theme==='dark'?'#11182a':'#fff';ctx.fillRect(0,0,canvas.width,canvas.height);const img=new Image(),blob=new Blob([svgData],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob);img.onload=()=>{ctx.drawImage(img,0,0,canvas.width,canvas.height);URL.revokeObjectURL(url);const a=document.createElement('a');a.download=`goes_${ST.product}_${new Date().toISOString().slice(0,10)}.png`;a.href=canvas.toDataURL('image/png');a.click();};img.src=url;}
+function exportCsv(){if(!ST.fullSeries.length)return;const prod=curProd();const dom=ST.currentDomain||ST.fullDomain,ser=ST.fullSeries.filter(d=>d.t>=dom[0]&&d.t<=dom[1]);let csv=`time_tag,channel,value_${prod.unit.replace(/[^a-zA-Z0-9]/g,'_')}\n`;ser.forEach(d=>{csv+=`${d.t.toISOString()},${ST.energy},${d.v}\n`;});const a=document.createElement('a');a.download=`goes_${ST.product}.csv`;a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.click();}
+function exportSvg(){const svgEl=$('chart'),svgData=new XMLSerializer().serializeToString(svgEl);const a=document.createElement('a');a.download=`goes_${ST.product}.svg`;a.href=URL.createObjectURL(new Blob([svgData],{type:'image/svg+xml'}));a.click();}
+
+/* ═══ NCEI ARCHIVE ═══ */
+const NCEI_BASE='https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/avg';
+const NCEI_SAT_MAP=[{from:2011,to:2020,sat:15,type:'cpflux'},{from:2003,to:2010,sat:13,type:'cpflux',fallback:[{sat:12,type:'eps'},{sat:11,type:'eps'}]},{from:1995,to:2002,sat:8,type:'eps',fallback:[{sat:10,type:'eps'}]},{from:1986,to:1994,sat:7,type:'eps',fallback:[{sat:6,type:'eps'}]},{from:1983,to:1985,sat:6,type:'eps',fallback:[{sat:5,type:'eps'}]},{from:1974,to:1982,sat:5,type:'eps',fallback:[{sat:2,type:'eps'},{sat:1,type:'eps'}]}];
+const EPS_MAP={p1_flux_ic:'>=1 MeV',p2_flux_ic:'>=5 MeV',p3_flux_ic:'>=10 MeV',p4_flux_ic:'>=30 MeV',p5_flux_ic:'>=50 MeV',p6_flux_ic:'>=60 MeV',p7_flux_ic:'>=100 MeV'};
+const CPFLUX_MAP={ZPGT1E:'>=1 MeV',ZPGT5E:'>=5 MeV',ZPGT10E:'>=10 MeV',ZPGT30E:'>=30 MeV',ZPGT50E:'>=50 MeV',ZPGT60E:'>=60 MeV',ZPGT100E:'>=100 MeV'};
+function nceiSatForYear(y){for(const e of NCEI_SAT_MAP)if(y>=e.from&&y<=e.to)return e;return null;}
+function nceiUrl(year,month,satNum,type){const mm=String(month).padStart(2,'0'),sn=String(satNum).padStart(2,'0');const d2=new Date(year,month,0);const ds=`${year}${mm}01`,de=`${year}${mm}${String(d2.getDate()).padStart(2,'0')}`;return type==='cpflux'?`${NCEI_BASE}/${year}/${mm}/goes${sn}/csv/g${sn}_epead_cpflux_5m_${ds}_${de}.csv`:`${NCEI_BASE}/${year}/${mm}/goes${sn}/csv/g${sn}_eps_5m_${ds}_${de}.csv`;}
+function parseNceiCsv(text,type){const lines=text.split('\n');let ds=-1;for(let i=0;i<lines.length;i++){if(lines[i].trim()==='data:'){ds=i+1;break;}}if(ds<0||ds>=lines.length)return[];const header=lines[ds].split(',').map(s=>s.trim());const colMap=type==='cpflux'?CPFLUX_MAP:EPS_MAP;const cols=[];for(const[col,energy]of Object.entries(colMap)){const idx=header.indexOf(col);if(idx>=0)cols.push({idx,energy});}if(!cols.length)return[];const ti=header.indexOf('time_tag');if(ti<0)return[];const rows=[];for(let i=ds+1;i<lines.length;i++){const parts=lines[i].split(',');if(parts.length<=ti)continue;const tm=new Date(parts[ti].trim().replace(' ','T')+'Z');if(isNaN(tm))continue;for(const c of cols){const v=parseFloat(parts[c.idx]);if(isFinite(v)&&v>0)rows.push({t:tm,energy:c.energy,v});}}return rows;}
+/* IndexedDB cache for NCEI data — TTL 1 hour */
+const NCEI_TTL=3600000;
+let nceiDb=null;
+function openCacheDb(){
+  if(nceiDb)return Promise.resolve(nceiDb);
+  return new Promise((res,rej)=>{const rq=indexedDB.open('ncei_cache',1);
+    rq.onupgradeneeded=()=>{const db=rq.result;if(!db.objectStoreNames.contains('f'))db.createObjectStore('f',{keyPath:'k'});};
+    rq.onsuccess=()=>{nceiDb=rq.result;res(nceiDb);};rq.onerror=()=>rej(rq.error);});
+}
+async function cacheGet(key){
+  try{const db=await openCacheDb();return new Promise(res=>{const tx=db.transaction('f','readonly');const rq=tx.objectStore('f').get(key);
+    rq.onsuccess=()=>{const e=rq.result;if(e&&Date.now()-e.ts<NCEI_TTL){res(e.rows.map(r=>({t:new Date(r[0]),energy:r[1],v:r[2]})));}else res(null);};rq.onerror=()=>res(null);});}catch(e){return null;}
+}
+async function cacheSet(key,rows){
+  try{const db=await openCacheDb();const compact=rows.map(r=>[+r.t,r.energy,r.v]);
+    return new Promise(res=>{const tx=db.transaction('f','readwrite');tx.objectStore('f').put({k:key,rows:compact,ts:Date.now()});tx.oncomplete=()=>res();tx.onerror=()=>res();});}catch(e){}
 }
 
-function resolveRange(desired){
-  const prod=curProd();
-  if(prod.ranges.includes(desired))return desired;
-  return prod.ranges[prod.ranges.length-1];
-}
+let nceiAbort=null;
+async function loadNceiRange(yf,mf,yt,mt){
+  const progEl=$('nceiProgress'),loadBtn=$('nceiLoadBtn'),abortBtn=$('nceiAbortBtn');
+  const months=[];
+  for(let y=yf;y<=yt;y++){const m1=y===yf?mf:1,m2=y===yt?mt:12;for(let m=m1;m<=m2;m++)months.push({y,m});}
+  if(!months.length){progEl.textContent=t(I18.invalidRange);return;}
+  if(months.length>600){progEl.textContent=t(I18.tooLarge);return;}
 
-async function loadLive(apiRange){
-  const prod=curProd();
-  const actualRange=resolveRange(apiRange);
-  ST.src='api';
-  dataBadge.textContent='LIVE';dataBadge.className='badge live';
-  statusEl.textContent='Загрузка…';
-  const url=`https://services.swpc.noaa.gov/json/goes/primary/${prod.id}-${actualRange}.json?_=${Date.now()}`;
-  try{
-    const r=await fetch(url,{cache:'no-store'});
-    if(!r.ok)throw new Error(`HTTP ${r.status} — ${url}`);
-    const raw=await r.json();
-    ST.apiData=parseApiRows(raw,prod);
-    const channels=discoverChannels(ST.apiData);
-    populateChannelSel(channels);
-    ST.currentDomain=null;
-    updateFromSrc();
-  }catch(e){statusEl.textContent=`Ошибка: ${e.message}`;}
-  updLivePresetState();updHighlight();
-}
+  loadBtn.style.display='none';abortBtn.style.display='';
+  const ctrl=new AbortController();nceiAbort=ctrl;
+  let allRows=[],loaded=0,failed=0,cached=0,chDone=false,lastRt=0;
+  const label=`NCEI ${yf}-${String(mf).padStart(2,'0')} → ${yt}-${String(mt).padStart(2,'0')}`;
 
-function loadFileView(data,fn){
-  ST.fileData=data;ST.src='file';ST.currentDomain=null;
-  dataBadge.textContent='FILE';dataBadge.className='badge file';
-  const channels=discoverChannels(data);
-  populateChannelSel(channels);
-  const dom=d3.extent(data.filter(d=>d.t),d=>d.t);
-  $('fileInfo').innerHTML=
-    `Файл: <span class="mono">${fn||'imported'}</span><br>`+
-    `Записей: <span class="mono">${data.length}</span><br>`+
-    `Период: <span class="mono">${dom[0]?fU(dom[0]):'?'}</span> → <span class="mono">${dom[1]?fU(dom[1]):'?'}</span><br>`+
-    `Каналы: <span class="mono">${channels.join(', ')}</span>`;
-  updateFromSrc();updFilePr();updHighlight();
-}
+  for(const{y,m}of months){
+    if(ctrl.signal.aborted)break;
+    const mm=String(m).padStart(2,'0');
+    progEl.textContent=`${t(I18.loadingMonth)} ${y}-${mm}… (${loaded}/${months.length}, ${cached} cached)`;
 
-/* ─────────── UI build ─────────── */
-function buildLP(){
-  const c=$('livePresets');
-  LIVE_P.forEach(p=>{
-    const b=document.createElement('button');b.className='pbtn';b.textContent=p.l;b.dataset.range=p.r;
-    b.addEventListener('click',()=>{ST.preset=p.l;loadLive(p.r);});
-    c.appendChild(b);
-  });
-}
-function updLivePresetState(){
-  const prod=curProd();
-  document.querySelectorAll('#livePresets .pbtn').forEach(b=>{
-    b.classList.toggle('disabled',!prod.ranges.includes(b.dataset.range));
-  });
-}
-function buildFP(){
-  const c=$('filePresets');
-  FILE_P.forEach(p=>{
-    const b=document.createElement('button');b.className='pbtn nf';b.textContent=p.l;b.dataset.days=p.d;
-    b.addEventListener('click',()=>{
-      if(!ST.fileData.length){
-        statusEl.textContent=`Для периода «${p.l}» нужен файл с историческими данными.`;
-        $('dataPanel').open=true;return;
-      }
-      const prod=curProd();
-      ST.src='file';ST.preset=p.l;
-      dataBadge.textContent='FILE';dataBadge.className='badge file';
-      const fs=pickE(ST.fileData,ST.energy,!prod.logY);
-      if(!fs.length){statusEl.textContent=`Нет данных для «${ST.energy}» в файле.`;return;}
-      ST.fullSeries=fs;ST.fullDomain=d3.extent(fs,d=>d.t);
-      const end=d3.max(fs,d=>d.t),start=new Date(+end-p.d*864e5);
-      ST.currentDomain=clampD([start,end]);setInputs(ST.currentDomain);updSCtrl();render();updHighlight();
-    });
-    c.appendChild(b);
-  });
-}
-function updFilePr(){
-  const hd=ST.fileData.length>0;
-  document.querySelectorAll('.pbtn.nf').forEach(b=>b.classList.toggle('hd',hd));
-}
-function updHighlight(){
-  document.querySelectorAll('.pbtn').forEach(b=>b.classList.toggle('active',b.textContent===ST.preset));
-}
+    const entry=nceiSatForYear(y);
+    if(!entry){failed++;loaded++;continue;}
+    const attempts=[{sat:entry.sat,type:entry.type},...(entry.fallback||[])];
+    let ok=false;
 
-function buildSC(){
-  const el=$('sLevelControls');el.innerHTML='';
-  SL.forEach(lv=>{
-    const w=document.createElement('div');w.className='sbox';
-    const cb=document.createElement('input');cb.type='checkbox';cb.checked=!!ST.sOn[lv.id];
-    cb.addEventListener('change',()=>{ST.sOn[lv.id]=cb.checked;render();saveSt();});
-    const dot=document.createElement('span');
-    dot.style.cssText=`display:inline-block;width:9px;height:9px;border-radius:9px;background:${SS[lv.id]}`;
-    const lab=document.createElement('span');lab.textContent=`${lv.id} (≥${lv.thr})`;lab.style.fontSize='11px';
-    w.appendChild(cb);w.appendChild(dot);w.appendChild(lab);el.appendChild(w);
-  });
-}
-function updSCtrl(){
-  const show=sActive();
-  $('sLevelChip').style.opacity=show?'1':'.35';
-  $('sLevelControls').querySelectorAll('input[type=checkbox]').forEach(c=>c.disabled=!show);
-}
+    for(const att of attempts){
+      if(ctrl.signal.aborted)break;
+      const url=nceiUrl(y,m,att.sat,att.type);
+      const cacheKey=`${y}:${mm}:${att.sat}:${att.type}`;
 
-/* ─────────── file import ─────────── */
-function handleFile(f){
-  statusEl.textContent=`Чтение: ${f.name}…`;
-  const r=new FileReader();
-  r.onload=()=>{
-    try{
-      const d=autoParse(r.result,f.name);
-      if(!d.length){statusEl.textContent='Не удалось распознать формат.';return;}
-      loadFileView(d,f.name);
-    }catch(e){statusEl.textContent=`Ошибка: ${e.message}`;}
-  };
-  r.readAsText(f);
-}
+      /* try IndexedDB cache first */
+      const hit=await cacheGet(cacheKey);
+      if(hit&&hit.length){allRows=allRows.concat(hit);ok=true;cached++;break;}
 
-/* ─────────── export ─────────── */
-function exportPng(){
-  const svgEl=$('chart'),svgData=new XMLSerializer().serializeToString(svgEl);
-  const canvas=document.createElement('canvas');const sc=2;canvas.width=W*sc;canvas.height=H*sc;
-  const ctx=canvas.getContext('2d');
-  ctx.fillStyle=ST.theme==='dark'?'#11182a':'#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
-  const img=new Image(),blob=new Blob([svgData],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob);
-  img.onload=()=>{ctx.drawImage(img,0,0,canvas.width,canvas.height);URL.revokeObjectURL(url);
-    const a=document.createElement('a');a.download=`goes_${ST.product}_${new Date().toISOString().slice(0,10)}.png`;a.href=canvas.toDataURL('image/png');a.click();};
-  img.src=url;
-}
-function exportCsv(){
-  if(!ST.fullSeries.length)return;const prod=curProd();
-  const dom=ST.currentDomain||ST.fullDomain,ser=ST.fullSeries.filter(d=>d.t>=dom[0]&&d.t<=dom[1]);
-  let csv=`time_tag,channel,value_${prod.unit.replace(/[^a-zA-Z0-9]/g,'_')}\n`;
-  ser.forEach(d=>{csv+=`${d.t.toISOString()},${ST.energy},${d.v}\n`;});
-  const a=document.createElement('a');a.download=`goes_${ST.product}_${ST.energy.replace(/[^a-zA-Z0-9]/g,'')}.csv`;
-  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.click();
-}
-function exportSvg(){
-  const svgEl=$('chart'),svgData=new XMLSerializer().serializeToString(svgEl);
-  const a=document.createElement('a');a.download=`goes_${ST.product}.svg`;
-  a.href=URL.createObjectURL(new Blob([svgData],{type:'image/svg+xml'}));a.click();
-}
-
-/* ─────────── refresh ─────────── */
-function schedRefresh(){
-  if(ST.timer){clearInterval(ST.timer);ST.timer=null;}
-  const s=+refreshSel.value;
-  if(s>0&&ST.src==='api'){
-    ST.timer=setInterval(()=>{
-      if(ST.src==='api'){const p=LIVE_P.find(x=>x.l===ST.preset);if(p)loadLive(p.r);}
-    },s*1000);
-  }
-}
-
-/* ─────────── settings persistence ─────────── */
-function saveSt(){
-  try{localStorage.setItem('goes_dx_s',JSON.stringify({
-    product:ST.product,energy:ST.energy,
-    lineColor:ST.lineColor,lineWidth:ST.lineWidth,lineOpacity:ST.lineOpacity,curve:ST.curve,
-    showPts:ST.showPts,ptSize:ST.ptSize,showGrid:ST.showGrid,gridOp:ST.gridOp,showThr:ST.showThr,
-    yMode:ST.yMode,yMin:ST.yMin,yMax:ST.yMax,theme:ST.theme,sOn:ST.sOn
-  }));}catch(e){}
-}
-function loadSt(){
-  try{
-    const r=localStorage.getItem('goes_dx_s');if(!r)return;
-    const s=JSON.parse(r);
-    if(s.product){ST.product=s.product;productSel.value=s.product;}
-    if(s.lineColor){ST.lineColor=s.lineColor;$('lineColorPick').value=s.lineColor;$('lineColorVal').textContent=s.lineColor;}
-    if(s.lineWidth!=null){ST.lineWidth=s.lineWidth;$('lineWidthRange').value=s.lineWidth;$('lineWidthVal').textContent=s.lineWidth;}
-    if(s.lineOpacity!=null){ST.lineOpacity=s.lineOpacity;$('lineOpacityRange').value=s.lineOpacity;$('lineOpacityVal').textContent=s.lineOpacity;}
-    if(s.curve){ST.curve=s.curve;$('curveTypeSel').value=s.curve;}
-    if(s.showPts!=null){ST.showPts=s.showPts;$('showPointsCb').checked=s.showPts;}
-    if(s.ptSize!=null){ST.ptSize=s.ptSize;$('pointSizeRange').value=s.ptSize;$('pointSizeVal').textContent=s.ptSize;}
-    if(s.showGrid!=null){ST.showGrid=s.showGrid;$('showGridCb').checked=s.showGrid;}
-    if(s.gridOp!=null){ST.gridOp=s.gridOp;$('gridOpacityRange').value=s.gridOp;}
-    if(s.showThr!=null){ST.showThr=s.showThr;$('showThresholdsCb').checked=s.showThr;}
-    if(s.yMode){ST.yMode=s.yMode;$('yAxisMode').value=s.yMode;$('yManualRow').style.display=s.yMode==='manual'?'flex':'none';}
-    if(s.yMin!=null){ST.yMin=s.yMin;$('yMinInput').value=s.yMin;}
-    if(s.yMax!=null){ST.yMax=s.yMax;$('yMaxInput').value=s.yMax;}
-    if(s.theme){ST.theme=s.theme;document.body.dataset.theme=s.theme;}
-    if(s.sOn)ST.sOn=s.sOn;
-    if(s.energy)ST.energy=s.energy;
-  }catch(e){}
-}
-
-/* ─────────── theme ─────────── */
-function toggleTheme(){
-  ST.theme=ST.theme==='dark'?'light':'dark';
-  document.body.dataset.theme=ST.theme;
-  if(ST.theme==='light'&&ST.lineColor==='#e7eefc'){ST.lineColor='#1a1a2e';$('lineColorPick').value='#1a1a2e';$('lineColorVal').textContent='#1a1a2e';}
-  else if(ST.theme==='dark'&&ST.lineColor==='#1a1a2e'){ST.lineColor='#e7eefc';$('lineColorPick').value='#e7eefc';$('lineColorVal').textContent='#e7eefc';}
-  render();saveSt();
-}
-
-/* ══════════ INIT ══════════ */
-function init(){
-  loadSt();buildLP();buildFP();buildSC();updFilePr();
-
-  const now=new Date();
-  $('endDate').value=`${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())}`;
-  const d3a=new Date(+now-3*864e5);
-  $('startDate').value=`${d3a.getFullYear()}-${pad2(d3a.getMonth()+1)}-${pad2(d3a.getDate())}`;
-
-  $('themeBtn').addEventListener('click',toggleTheme);
-
-  /* Product change → re-fetch, re-discover channels */
-  productSel.addEventListener('change',()=>{
-    ST.product=productSel.value;
-    ST.currentDomain=null;
-    updLivePresetState();
-    const bestRange=resolveRange(LIVE_P.find(x=>x.l===ST.preset)?.r||'3-day');
-    const preset=LIVE_P.find(x=>x.r===bestRange);
-    if(preset)ST.preset=preset.l;
-    loadLive(bestRange);
-    saveSt();
-  });
-
-  energySel.addEventListener('change',()=>{ST.energy=energySel.value;ST.currentDomain=null;updateFromSrc();saveSt();});
-  refreshSel.addEventListener('change',()=>{schedRefresh();});
-  $('reloadBtn').addEventListener('click',()=>{
-    if(ST.src==='api'){const p=LIVE_P.find(x=>x.l===ST.preset);if(p)loadLive(p.r);}
-    else updateFromSrc();
-  });
-
-  $('applyRangeBtn').addEventListener('click',()=>{
-    const dom=getInputDom();
-    if(!dom){statusEl.textContent='Неверный период.';return;}
-    if(ST.fileData.length){
-      const prod=curProd();
-      const fs=pickE(ST.fileData,ST.energy,!prod.logY),fd=fs.length?d3.extent(fs,d=>d.t):null;
-      if(fd&&dom[0]>=new Date(+fd[0]-864e5)&&dom[1]<=new Date(+fd[1]+864e5)){
-        if(ST.src!=='file'){ST.src='file';ST.fullSeries=fs;ST.fullDomain=fd;dataBadge.textContent='FILE';dataBadge.className='badge file';}
-      }
+      /* fetch from network */
+      try{
+        const r=await fetch(url,{signal:ctrl.signal});
+        if(!r.ok)continue;
+        const rows=parseNceiCsv(await r.text(),att.type);
+        if(rows.length){allRows=allRows.concat(rows);cacheSet(cacheKey,rows);ok=true;break;}
+      }catch(e){if(e.name==='AbortError')break;}
     }
-    if(!ST.fullDomain){statusEl.textContent='Нет данных.';return;}
-    ST.currentDomain=clampD(dom);setInputs(ST.currentDomain);ST.preset='';updHighlight();render();
-  });
-  $('resetZoomBtn').addEventListener('click',()=>{if(!ST.fullDomain)return;ST.currentDomain=ST.fullDomain;setInputs(ST.currentDomain);render();});
+    if(!ok)failed++;
+    loaded++;
 
-  /* display settings */
+    /* Progressive render — throttled to max once per 400ms */
+    if(allRows.length&&Date.now()-lastRt>400){
+      ST.fileData=allRows;ST.src='file';
+      dataBadge.textContent='FILE';dataBadge.className='badge file';
+      if(!chDone){populateChannelSel(discoverChannels(allRows));renderBioPanel();chDone=true;}
+      const prod=curProd();
+      ST.fullSeries=pickE(allRows,ST.energy,!prod.logY);
+      if(ST.fullSeries.length){
+        ST.fullDomain=d3.extent(ST.fullSeries,d=>d.t);
+        ST.currentDomain=ST.fullDomain;
+        setInputs(ST.currentDomain);updSCtrl();render();
+      }
+      lastRt=Date.now();
+    }
+  }
+
+  nceiAbort=null;loadBtn.style.display='';abortBtn.style.display='none';
+  if(ctrl.signal.aborted){progEl.textContent=t(I18.aborted);return;}
+  if(!allRows.length){progEl.textContent=`${t(I18.noData)} (${failed} ${t(I18.months)})`;return;}
+
+  progEl.textContent=`${t(I18.done)}: ${allRows.length} ${t(I18.records)}, ${loaded-failed}/${months.length} ${t(I18.months)}, ${failed} ${t(I18.skipped)}, ${cached} cached.`;
+  loadFileView(allRows,label);
+}
+function buildNceiControls(){const yf=$('nceiYearFrom'),yt=$('nceiYearTo'),mf=$('nceiMonFrom'),mt=$('nceiMonTo');for(let y=2020;y>=1974;y--){yf.appendChild(Object.assign(document.createElement('option'),{value:y,textContent:y,selected:y===2019}));yt.appendChild(Object.assign(document.createElement('option'),{value:y,textContent:y,selected:y===2020}));}for(let m=1;m<=12;m++){const ml=String(m).padStart(2,'0');mf.appendChild(Object.assign(document.createElement('option'),{value:m,textContent:ml,selected:m===1}));mt.appendChild(Object.assign(document.createElement('option'),{value:m,textContent:ml,selected:m===3}));}$('nceiLoadBtn').addEventListener('click',()=>{loadNceiRange(+yf.value,+mf.value,+yt.value,+mt.value);});$('nceiAbortBtn').addEventListener('click',()=>{if(nceiAbort)nceiAbort.abort();});document.querySelectorAll('.ncei-quick').forEach(btn=>{btn.addEventListener('click',()=>{const n=+btn.dataset.months;const endY=2020,endM=3;let startY=endY,startM=endM-n;while(startM<1){startM+=12;startY--;}if(startY<1974){startY=1974;startM=1;}yf.value=startY;mf.value=startM;yt.value=endY;mt.value=endM;loadNceiRange(startY,startM,endY,endM);});});}
+
+/* ═══ SETTINGS ═══ */
+function schedRefresh(){if(ST.timer){clearInterval(ST.timer);ST.timer=null;}const s=+refreshSel.value;if(s>0&&ST.src==='api'){ST.timer=setInterval(()=>{if(ST.src==='api'){const p=LIVE_P.find(x=>x.l===ST.preset);if(p)loadLive(p.r);}},s*1000);}}
+function saveSt(){try{localStorage.setItem('goes_dx_s',JSON.stringify({product:ST.product,energy:ST.energy,lineColor:ST.lineColor,lineWidth:ST.lineWidth,lineOpacity:ST.lineOpacity,curve:ST.curve,showPts:ST.showPts,ptSize:ST.ptSize,showGrid:ST.showGrid,gridOp:ST.gridOp,showThr:ST.showThr,yMode:ST.yMode,yMin:ST.yMin,yMax:ST.yMax,theme:ST.theme,sOn:ST.sOn,lang:L}));}catch(e){}}
+function loadSt(){try{const r=localStorage.getItem('goes_dx_s');if(!r)return;const s=JSON.parse(r);if(s.product){ST.product=s.product;}if(s.lineColor){ST.lineColor=s.lineColor;$('lineColorPick').value=s.lineColor;$('lineColorVal').textContent=s.lineColor;}if(s.lineWidth!=null){ST.lineWidth=s.lineWidth;$('lineWidthRange').value=s.lineWidth;$('lineWidthVal').textContent=s.lineWidth;}if(s.lineOpacity!=null){ST.lineOpacity=s.lineOpacity;$('lineOpacityRange').value=s.lineOpacity;$('lineOpacityVal').textContent=s.lineOpacity;}if(s.curve){ST.curve=s.curve;$('curveTypeSel').value=s.curve;}if(s.showPts!=null){ST.showPts=s.showPts;$('showPointsCb').checked=s.showPts;}if(s.ptSize!=null){ST.ptSize=s.ptSize;$('pointSizeRange').value=s.ptSize;$('pointSizeVal').textContent=s.ptSize;}if(s.showGrid!=null){ST.showGrid=s.showGrid;$('showGridCb').checked=s.showGrid;}if(s.gridOp!=null){ST.gridOp=s.gridOp;$('gridOpacityRange').value=s.gridOp;}if(s.showThr!=null){ST.showThr=s.showThr;$('showThresholdsCb').checked=s.showThr;}if(s.yMode){ST.yMode=s.yMode;$('yAxisMode').value=s.yMode;$('yManualRow').style.display=s.yMode==='manual'?'flex':'none';}if(s.yMin!=null){ST.yMin=s.yMin;$('yMinInput').value=s.yMin;}if(s.yMax!=null){ST.yMax=s.yMax;$('yMaxInput').value=s.yMax;}if(s.theme){ST.theme=s.theme;document.body.dataset.theme=s.theme;}if(s.sOn)ST.sOn=s.sOn;if(s.energy)ST.energy=s.energy;if(s.lang)L=s.lang;}catch(e){}}
+function toggleTheme(){ST.theme=ST.theme==='dark'?'light':'dark';document.body.dataset.theme=ST.theme;if(ST.theme==='light'&&ST.lineColor==='#e7eefc'){ST.lineColor='#1a1a2e';$('lineColorPick').value='#1a1a2e';$('lineColorVal').textContent='#1a1a2e';}else if(ST.theme==='dark'&&ST.lineColor==='#1a1a2e'){ST.lineColor='#e7eefc';$('lineColorPick').value='#e7eefc';$('lineColorVal').textContent='#e7eefc';}render();saveSt();}
+function toggleLang(){L=L==='en'?'ru':'en';applyLang();saveSt();if(ST.fullSeries.length)render();}
+
+/* ═══ INIT ═══ */
+function init(){
+  loadSt();applyLang();buildLP();buildFP();buildSC();updFilePr();buildNceiControls();
+  const now=new Date();$('endDate').value=`${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())}`;const d3a=new Date(+now-3*864e5);$('startDate').value=`${d3a.getFullYear()}-${pad2(d3a.getMonth()+1)}-${pad2(d3a.getDate())}`;
+  $('themeBtn').addEventListener('click',toggleTheme);
+  $('langBtn').addEventListener('click',toggleLang);
+  productSel.addEventListener('change',()=>{ST.product=productSel.value;ST.currentDomain=null;updLivePresetState();const br=resolveRange(LIVE_P.find(x=>x.l===ST.preset)?.r||'3-day');const pr=LIVE_P.find(x=>x.r===br);if(pr)ST.preset=pr.l;loadLive(br);saveSt();});
+  energySel.addEventListener('change',()=>{ST.energy=energySel.value;ST.currentDomain=null;renderBioPanel();updateFromSrc();saveSt();});
+  refreshSel.addEventListener('change',()=>{schedRefresh();});
+  $('reloadBtn').addEventListener('click',()=>{if(ST.src==='api'){const p=LIVE_P.find(x=>x.l===ST.preset);if(p)loadLive(p.r);}else updateFromSrc();});
+  $('applyRangeBtn').addEventListener('click',()=>{const dom=getInputDom();if(!dom){statusEl.textContent=t(I18.badRange);return;}if(ST.fileData.length){const prod=curProd();const fs=pickE(ST.fileData,ST.energy,!prod.logY),fd=fs.length?d3.extent(fs,d=>d.t):null;if(fd&&dom[0]>=new Date(+fd[0]-864e5)&&dom[1]<=new Date(+fd[1]+864e5)){if(ST.src!=='file'){ST.src='file';ST.fullSeries=fs;ST.fullDomain=fd;dataBadge.textContent='FILE';dataBadge.className='badge file';}}}if(!ST.fullDomain){statusEl.textContent=t(I18.noData);return;}ST.currentDomain=clampD(dom);setInputs(ST.currentDomain);ST.preset='';updHighlight();render();});
+  $('resetZoomBtn').addEventListener('click',()=>{if(!ST.fullDomain)return;ST.currentDomain=ST.fullDomain;setInputs(ST.currentDomain);render();});
   const rs=()=>{render();saveSt();};
   $('lineColorPick').addEventListener('input',e=>{ST.lineColor=e.target.value;$('lineColorVal').textContent=e.target.value;rs();});
   $('lineWidthRange').addEventListener('input',e=>{ST.lineWidth=+e.target.value;$('lineWidthVal').textContent=e.target.value;rs();});
@@ -925,48 +679,12 @@ function init(){
   $('yAxisMode').addEventListener('change',e=>{ST.yMode=e.target.value;$('yManualRow').style.display=e.target.value==='manual'?'flex':'none';rs();});
   $('yMinInput').addEventListener('change',e=>{ST.yMin=e.target.value?+e.target.value:null;rs();});
   $('yMaxInput').addEventListener('change',e=>{ST.yMax=e.target.value?+e.target.value:null;rs();});
-
-  /* file */
-  const dz=$('dropZone'),fi=$('fileInput');
-  dz.addEventListener('click',()=>fi.click());
-  fi.addEventListener('change',()=>{if(fi.files[0])handleFile(fi.files[0]);});
-  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
-  dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
-  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0]);});
-
-  $('clearFileBtn').addEventListener('click',()=>{
-    ST.fileData=[];ST.src='api';$('fileInfo').textContent='';updFilePr();
-    ST.currentDomain=null;
-    const bestRange=resolveRange('3-day');
-    loadLive(bestRange);ST.preset='3д';updHighlight();
-  });
-
-  /* custom URL */
-  $('fetchUrlBtn').addEventListener('click',async()=>{
-    const url=$('customUrl').value.trim();if(!url){statusEl.textContent='Введите URL.';return;}
-    statusEl.textContent=`Загрузка: ${url}…`;
-    try{
-      const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);
-      const ct=r.headers.get('content-type')||'';
-      let data;
-      if(ct.includes('json')){data=parseGenericJson(await r.json());}
-      else{const txt=await r.text();data=autoParse(txt,'remote.csv');}
-      if(!data.length){statusEl.textContent='Данных не найдено.';return;}
-      loadFileView(data,url.split('/').pop()||'remote');
-    }catch(e){statusEl.textContent=`Ошибка: ${e.message}`;}
-  });
-
-  /* export */
-  $('exportPngBtn').addEventListener('click',exportPng);
-  $('exportCsvBtn').addEventListener('click',exportCsv);
-  $('exportSvgBtn').addEventListener('click',exportSvg);
-
-  /* go */
-  schedRefresh();
-  const initRange=resolveRange('3-day');
-  loadLive(initRange);ST.preset=LIVE_P.find(p=>p.r===initRange)?.l||'3д';updHighlight();
+  const dz=$('dropZone'),fi=$('fileInput');dz.addEventListener('click',()=>fi.click());fi.addEventListener('change',()=>{if(fi.files[0])handleFile(fi.files[0]);});dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0]);});
+  $('clearFileBtn').addEventListener('click',()=>{ST.fileData=[];ST.src='api';$('fileInfo').textContent='';updFilePr();ST.currentDomain=null;loadLive(resolveRange('3-day'));ST.preset='3d';updHighlight();});
+  $('fetchUrlBtn').addEventListener('click',async()=>{const url=$('customUrl').value.trim();if(!url){statusEl.textContent=t(I18.enterUrl);return;}statusEl.textContent=`${t(I18.loading)} ${url}…`;try{const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);const ct=r.headers.get('content-type')||'';let data;if(ct.includes('json'))data=parseGenericJson(await r.json());else data=autoParse(await r.text(),'remote.csv');if(!data.length){statusEl.textContent=t(I18.noDataUrl);return;}loadFileView(data,url.split('/').pop()||'remote');}catch(e){statusEl.textContent=`${t(I18.error)}: ${e.message}`;}});
+  $('exportPngBtn').addEventListener('click',exportPng);$('exportCsvBtn').addEventListener('click',exportCsv);$('exportSvgBtn').addEventListener('click',exportSvg);
+  schedRefresh();const initR=resolveRange('3-day');loadLive(initR);ST.preset=LIVE_P.find(p=>p.r===initR)?.l||'3d';updHighlight();
 }
-
 init();
 })();
 </script>
